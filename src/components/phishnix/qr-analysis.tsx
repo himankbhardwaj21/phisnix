@@ -1,7 +1,8 @@
 
 'use client';
 
-import { useFormState, useFormStatus } from 'react-dom';
+import { useActionState } from 'react';
+import { useFormStatus } from 'react-dom';
 import { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import { Upload, Search, LoaderCircle, X } from 'lucide-react';
@@ -31,7 +32,7 @@ export function QrAnalysis() {
   const formRef = useRef<HTMLFormElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const [state, formAction] = useFormState<AnalysisState<AnalyzeQrCodeSafetyOutput>, FormData>(
+  const [state, formAction] = useActionState<AnalysisState<AnalyzeQrCodeSafetyOutput>, FormData>(
     performQrAnalysis,
     {}
   );

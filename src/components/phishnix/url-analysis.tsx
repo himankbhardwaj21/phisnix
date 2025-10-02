@@ -1,8 +1,8 @@
 
 'use client';
 
-import { useFormState, useFormStatus } from 'react-dom';
-import { useEffect, useRef } from 'react';
+import { useActionState, useEffect, useRef } from 'react';
+import { useFormStatus } from 'react-dom';
 import { Search, LoaderCircle } from 'lucide-react';
 
 import { performUrlAnalysis, type AnalysisState } from '@/app/actions';
@@ -31,7 +31,7 @@ function SubmitButton() {
 export function UrlAnalysis() {
   const { toast } = useToast();
   const formRef = useRef<HTMLFormElement>(null);
-  const [state, formAction] = useFormState<AnalysisState<AnalyzeWebsiteSafetyOutput>, FormData>(
+  const [state, formAction] = useActionState<AnalysisState<AnalyzeWebsiteSafetyOutput>, FormData>(
     performUrlAnalysis,
     {}
   );
