@@ -1,1 +1,6 @@
-// Flows will be imported for their side effects in this file.
+import { config } from 'dotenv';
+config();
+
+import '@/ai/flows/analyze-qr-code-safety.ts';
+import '@/ai/flows/analyze-website-safety.ts';
+import '@/ai/flows/analyze-payment-link-safety.ts';
