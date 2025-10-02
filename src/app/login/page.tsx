@@ -50,10 +50,14 @@ export default function LoginPage() {
       case 'auth/invalid-email':
         return 'Please enter a valid email address.';
       case 'auth/popup-closed-by-user':
+      case 'auth/cancelled-popup-request':
         return 'Sign-in process was cancelled.';
+      case 'auth/popup-blocked':
+        return 'The sign-in popup was blocked by your browser. Please allow popups for this site.';
       case 'auth/account-exists-with-different-credential':
         return 'An account already exists with the same email address but different sign-in credentials.';
       default:
+        console.error('OAuth Error:', err);
         return 'An unexpected error occurred. Please try again.';
     }
   };
@@ -105,10 +109,19 @@ export default function LoginPage() {
     setIsLoading(true);
     setError(null);
     try {
-      const provider =
-        providerName === 'google'
-          ? new GoogleAuthProvider()
-          : new OAuthProvider('microsoft.com');
+      let provider;
+      if (providerName === 'google') {
+        provider = new GoogleAuthProvider();
+        provider.setCustomParameters({
+          prompt: 'select_account'
+        });
+      } else {
+        provider = new OAuthProvider('microsoft.com');
+        provider.setCustomParameters({
+          prompt: 'select_account',
+          tenant: 'common'
+        });
+      }
       await signInWithPopup(auth, provider);
       router.push('/');
     } catch (err) {
