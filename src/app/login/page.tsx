@@ -1,7 +1,6 @@
 
 'use client';
 
-import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
@@ -13,12 +12,10 @@ import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Logo } from '@/components/phishnix/logo';
 import { GoogleIcon, OutlookIcon } from '@/components/icons';
-import { PlaceHolderImages } from '@/lib/placeholder-images';
 
 export default function LoginPage() {
   const router = useRouter();
   const [isSignUp, setIsSignUp] = useState(false);
-  const loginImage = PlaceHolderImages.find((img) => img.id === 'login-hero');
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -27,7 +24,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="w-full min-h-screen lg:grid lg:grid-cols-2">
+    <div className="w-full min-h-screen flex items-center justify-center">
       <div className="flex items-center justify-center py-12">
         <div className="mx-auto grid w-[350px] gap-6">
           <div className="grid gap-2 text-center">
@@ -90,17 +87,6 @@ export default function LoginPage() {
             </CardContent>
           </Card>
         </div>
-      </div>
-      <div className="hidden bg-muted lg:block relative">
-        {loginImage && (
-          <Image
-            src={loginImage.imageUrl}
-            alt={loginImage.description}
-            data-ai-hint={loginImage.imageHint}
-            fill
-            className="object-cover dark:brightness-[0.4]"
-          />
-        )}
       </div>
     </div>
   );
