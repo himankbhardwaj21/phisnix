@@ -1,0 +1,113 @@
+/**
+ * @fileoverview Firestore Security Rules for PhishNix.
+ *
+ * Core Philosophy:
+ * This ruleset enforces a strict user-ownership model. Each user has a dedicated data tree,
+ * and only the authenticated user can access their own data.
+ *
+ * Data Structure:
+ * Data is nested under /users/{userId}, with analysis subcollections for URLs, payments, and QR codes.
+ *
+ * Key Security Decisions:
+ * - Users can only access their own data.
+ * - Listing other user's profiles or analysis results is disallowed.
+ */
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    /**
+     * @description Defines the `isSignedIn()` helper function to check if a user is authenticated.
+     * @returns {boolean} True if the user is signed in, false otherwise.
+     */
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    /**
+     * @description Defines the `isOwner(userId)` helper function to check if the request is made by the owner of the resource.
+     * @param {string} userId - The user ID to compare against the request's authentication UID.
+     * @returns {boolean} True if the user ID matches the request's authentication UID, false otherwise.
+     */
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+
+    /**
+     * @description Defines the `isExistingOwner(userId)` helper function to check if the resource exists and the request is made by the owner of the resource.
+     * @param {string} userId - The user ID to compare against the request's authentication UID.
+     * @returns {boolean} True if the resource exists and the user ID matches the request's authentication UID, false otherwise.
+     */
+    function isExistingOwner(userId) {
+      return isOwner(userId) && resource != null;
+    }
+
+    /**
+     * @description Security rules for user profiles.
+     * @path /users/{userId}
+     * @allow (create) - Authenticated user creates their own profile with a matching user ID.
+     * @allow (get, update, delete) - Authenticated user accesses their own profile.
+     * @deny (create) - Non-authenticated user attempts to create a profile.
+     * @deny (get, update, delete) - Authenticated user attempts to access another user's profile.
+     * @principle Enforces document ownership for all operations.
+     */
+    match /users/{userId} {
+      allow get: if isOwner(userId);
+      allow list: if false;
+      allow create: if isSignedIn() && isOwner(userId) && request.resource.data.id == userId;
+      allow update: if isExistingOwner(userId) && request.resource.data.id == resource.data.id;
+      allow delete: if isExistingOwner(userId);
+    }
+
+    /**
+     * @description Security rules for URL analysis results.
+     * @path /users/{userId}/urlAnalysis/{urlAnalysisId}
+     * @allow (create) - Authenticated user creates a URL analysis result under their profile.
+     * @allow (get, update, delete) - Authenticated user accesses their own URL analysis results.
+     * @deny (create) - Non-authenticated user attempts to create a URL analysis result.
+     * @deny (get, update, delete) - Authenticated user attempts to access another user's URL analysis results.
+     * @principle Restricts access to a user's own URL analysis data.
+     */
+    match /users/{userId}/urlAnalysis/{urlAnalysisId} {
+      allow get: if isOwner(userId);
+      allow list: if isOwner(userId);
+      allow create: if isSignedIn() && isOwner(userId) && request.resource.data.userId == userId;
+      allow update: if isExistingOwner(userId) && request.resource.data.userId == resource.data.userId;
+      allow delete: if isExistingOwner(userId);
+    }
+
+    /**
+     * @description Security rules for Payment analysis results.
+     * @path /users/{userId}/paymentAnalysis/{paymentAnalysisId}
+     * @allow (create) - Authenticated user creates a Payment analysis result under their profile.
+     * @allow (get, update, delete) - Authenticated user accesses their own Payment analysis results.
+     * @deny (create) - Non-authenticated user attempts to create a Payment analysis result.
+     * @deny (get, update, delete) - Authenticated user attempts to access another user's Payment analysis results.
+     * @principle Restricts access to a user's own Payment analysis data.
+     */
+    match /users/{userId}/paymentAnalysis/{paymentAnalysisId} {
+      allow get: if isOwner(userId);
+      allow list: if isOwner(userId);
+      allow create: if isSignedIn() && isOwner(userId) && request.resource.data.userId == userId;
+      allow update: if isExistingOwner(userId) && request.resource.data.userId == resource.data.userId;
+      allow delete: if isExistingOwner(userId);
+    }
+
+    /**
+     * @description Security rules for QR Code analysis results.
+     * @path /users/{userId}/qrCodeAnalysis/{qrCodeAnalysisId}
+     * @allow (create) - Authenticated user creates a QR Code analysis result under their profile.
+     * @allow (get, update, delete) - Authenticated user accesses their own QR Code analysis results.
+     * @deny (create) - Non-authenticated user attempts to create a QR Code analysis result.
+     * @deny (get, update, delete) - Authenticated user attempts to access another user's QR Code analysis results.
+     * @principle Restricts access to a user's own QR Code analysis data.
+     */
+    match /users/{userId}/qrCodeAnalysis/{qrCodeAnalysisId} {
+      allow get: if isOwner(userId);
+      allow list: if isOwner(userId);
+      allow create: if isSignedIn() && isOwner(userId) && request.resource.data.userId == userId;
+      allow update: if isExistingOwner(userId) && request.resource.data.userId == resource.data.userId;
+      allow delete: if isExistingOwner(userId);
+    }
+  }
+}

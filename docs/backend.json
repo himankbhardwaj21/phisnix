@@ -1,0 +1,243 @@
+{
+  "entities": {
+    "User": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "User",
+      "type": "object",
+      "description": "Represents a user of the PhishNix platform.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the user."
+        },
+        "email": {
+          "type": "string",
+          "description": "User's email address.",
+          "format": "email"
+        },
+        "phoneNumber": {
+          "type": "string",
+          "description": "User's phone number."
+        },
+        "name": {
+          "type": "string",
+          "description": "User's full name."
+        }
+      },
+      "required": [
+        "id",
+        "email"
+      ]
+    },
+    "UrlAnalysis": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "UrlAnalysis",
+      "type": "object",
+      "description": "Represents the analysis of a URL.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the URL analysis."
+        },
+        "url": {
+          "type": "string",
+          "description": "The URL that was analyzed."
+        },
+        "isSafe": {
+          "type": "boolean",
+          "description": "Indicates whether the URL is considered safe."
+        },
+        "trustScore": {
+          "type": "number",
+          "description": "A score representing the trust level of the URL."
+        },
+        "analysisDate": {
+          "type": "string",
+          "description": "The date and time when the URL was analyzed.",
+          "format": "date-time"
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to User. (Relationship: User 1:N UrlAnalysis)"
+        }
+      },
+      "required": [
+        "id",
+        "url",
+        "isSafe",
+        "trustScore",
+        "analysisDate",
+        "userId"
+      ]
+    },
+    "PaymentAnalysis": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "PaymentAnalysis",
+      "type": "object",
+      "description": "Represents the analysis of a payment link.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the payment analysis."
+        },
+        "paymentLink": {
+          "type": "string",
+          "description": "The payment link that was analyzed."
+        },
+        "isSafe": {
+          "type": "boolean",
+          "description": "Indicates whether the payment link is considered safe."
+        },
+        "trustScore": {
+          "type": "number",
+          "description": "A score representing the trust level of the payment link."
+        },
+        "analysisDate": {
+          "type": "string",
+          "description": "The date and time when the payment link was analyzed.",
+          "format": "date-time"
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to User. (Relationship: User 1:N PaymentAnalysis)"
+        }
+      },
+      "required": [
+        "id",
+        "paymentLink",
+        "isSafe",
+        "trustScore",
+        "analysisDate",
+        "userId"
+      ]
+    },
+    "QrCodeAnalysis": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "QrCodeAnalysis",
+      "type": "object",
+      "description": "Represents the analysis of a QR code.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the QR code analysis."
+        },
+        "qrCodeContent": {
+          "type": "string",
+          "description": "The content extracted from the QR code (e.g., URL)."
+        },
+        "isSafe": {
+          "type": "boolean",
+          "description": "Indicates whether the QR code content is considered safe."
+        },
+        "trustScore": {
+          "type": "number",
+          "description": "A score representing the trust level of the QR code content."
+        },
+        "analysisDate": {
+          "type": "string",
+          "description": "The date and time when the QR code was analyzed.",
+          "format": "date-time"
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to User. (Relationship: User 1:N QrCodeAnalysis)"
+        }
+      },
+      "required": [
+        "id",
+        "qrCodeContent",
+        "isSafe",
+        "trustScore",
+        "analysisDate",
+        "userId"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/users/{userId}",
+        "definition": {
+          "entityName": "User",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "Stores user profiles.  Access is restricted to the user themselves.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the user."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/urlAnalysis/{urlAnalysisId}",
+        "definition": {
+          "entityName": "UrlAnalysis",
+          "schema": {
+            "$ref": "#/backend/entities/UrlAnalysis"
+          },
+          "description": "Stores URL analysis results for a specific user. Access is restricted to the user themselves.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the user."
+            },
+            {
+              "name": "urlAnalysisId",
+              "description": "The unique identifier of the URL analysis."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/paymentAnalysis/{paymentAnalysisId}",
+        "definition": {
+          "entityName": "PaymentAnalysis",
+          "schema": {
+            "$ref": "#/backend/entities/PaymentAnalysis"
+          },
+          "description": "Stores payment analysis results for a specific user. Access is restricted to the user themselves.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the user."
+            },
+            {
+              "name": "paymentAnalysisId",
+              "description": "The unique identifier of the payment analysis."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/qrCodeAnalysis/{qrCodeAnalysisId}",
+        "definition": {
+          "entityName": "QrCodeAnalysis",
+          "schema": {
+            "$ref": "#/backend/entities/QrCodeAnalysis"
+          },
+          "description": "Stores QR code analysis results for a specific user. Access is restricted to the user themselves.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the user."
+            },
+            {
+              "name": "qrCodeAnalysisId",
+              "description": "The unique identifier of the QR code analysis."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The Firestore structure is designed to ensure authorization independence, clarity, and scalability. User data is stored in a private collection (`/users/{userId}`) to enforce path-based ownership.  Analysis entities (UrlAnalysis, PaymentAnalysis, QrCodeAnalysis) are stored as subcollections under the respective user's document. This structure provides a clear hierarchical ownership model. There is no need to denormalize any authorization data due to the chosen structure.\n\nThis design inherently supports QAPs.  `list` operations on `/users/{userId}/urlAnalysis` will only return documents associated with the specified `userId`, as defined by the path."
+  }
+}
