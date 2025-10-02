@@ -4,6 +4,14 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
+import {
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  sendPasswordResetEmail,
+  AuthError,
+} from 'firebase/auth';
+import { useFirebase } from '@/firebase';
+import { useToast } from '@/hooks/use-toast';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -12,15 +20,78 @@ import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Logo } from '@/components/phishnix/logo';
 import { GoogleIcon, OutlookIcon } from '@/components/icons';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { AlertCircle, LoaderCircle } from 'lucide-react';
 
 export default function LoginPage() {
   const router = useRouter();
-  const [isSignUp, setIsSignUp] = useState(false);
+  const { auth } = useFirebase();
+  const { toast } = useToast();
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const [isSignUp, setIsSignUp] = useState(false);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleAuthError = (err: AuthError) => {
+    switch (err.code) {
+      case 'auth/user-not-found':
+      case 'auth/wrong-password':
+      case 'auth/invalid-credential':
+        return 'Invalid email or password. Please try again.';
+      case 'auth/email-already-in-use':
+        return 'An account with this email already exists. Please sign in.';
+      case 'auth/weak-password':
+        return 'The password is too weak. Please use at least 6 characters.';
+      case 'auth/invalid-email':
+        return 'Please enter a valid email address.';
+      default:
+        return 'An unexpected error occurred. Please try again.';
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    // Mock authentication: just redirect to home page
-    router.push('/');
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      if (isSignUp) {
+        await createUserWithEmailAndPassword(auth, email, password);
+        toast({
+          title: 'Account Created',
+          description: 'You have been successfully signed up!',
+        });
+      } else {
+        await signInWithEmailAndPassword(auth, email, password);
+      }
+      router.push('/');
+    } catch (err) {
+      setError(handleAuthError(err as AuthError));
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handlePasswordReset = async () => {
+    if (!email) {
+      setError('Please enter your email address to reset your password.');
+      return;
+    }
+    setIsLoading(true);
+    setError(null);
+    try {
+      await sendPasswordResetEmail(auth, email);
+      toast({
+        title: 'Password Reset Email Sent',
+        description: 'Check your inbox for instructions to reset your password.',
+      });
+    } catch (err) {
+      setError(handleAuthError(err as AuthError));
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -58,29 +129,64 @@ export default function LoginPage() {
                   OR
                 </div>
               </div>
+              {error && (
+                <Alert variant="destructive" className="mb-4">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertTitle>Authentication Error</AlertTitle>
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
+              )}
               <form onSubmit={handleSubmit} className="grid gap-4">
                 <div className="grid gap-2">
-                  <Label htmlFor="email">Email or Phone</Label>
-                  <Input id="email" type="email" placeholder="m@example.com" required />
+                  <Label htmlFor="email">Email</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="m@example.com"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    disabled={isLoading}
+                  />
                 </div>
                 <div className="grid gap-2">
                   <div className="flex items-center">
                     <Label htmlFor="password">Password</Label>
                     {!isSignUp && (
-                      <Link href="#" className="ml-auto inline-block text-sm underline">
+                      <button type="button" onClick={handlePasswordReset} className="ml-auto inline-block text-sm underline">
                         Forgot your password?
-                      </Link>
+                      </button>
                     )}
                   </div>
-                  <Input id="password" type="password" required />
+                  <Input
+                    id="password"
+                    type="password"
+                    required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    disabled={isLoading}
+                  />
                 </div>
-                <Button type="submit" className="w-full">
-                  {isSignUp ? 'Sign Up' : 'Sign In'}
+                <Button type="submit" className="w-full" disabled={isLoading}>
+                  {isLoading ? (
+                    <LoaderCircle className="animate-spin" />
+                  ) : isSignUp ? (
+                    'Sign Up'
+                  ) : (
+                    'Sign In'
+                  )}
                 </Button>
               </form>
               <div className="mt-4 text-center text-sm">
                 {isSignUp ? 'Already have an account?' : "Don't have an account?"}
-                <button onClick={() => setIsSignUp(!isSignUp)} className="underline ml-1">
+                <button
+                  onClick={() => {
+                    setIsSignUp(!isSignUp);
+                    setError(null);
+                  }}
+                  className="underline ml-1"
+                  disabled={isLoading}
+                >
                   {isSignUp ? 'Sign in' : 'Sign up'}
                 </button>
               </div>
