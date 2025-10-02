@@ -14,6 +14,7 @@ import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
 
 type AnalysisResultProps<T> = {
   state: AnalysisState<T & { isSafe?: boolean; reasoning?: string }>;
+  pending?: boolean;
 };
 
 const ResultSkeleton = () => (
@@ -30,8 +31,9 @@ const ResultSkeleton = () => (
     </div>
 );
 
-export function AnalysisResult<T extends { isSafe?: boolean; reasoning?: string }>({ state }: AnalysisResultProps<T>) {
-  const { pending } = useFormStatus();
+export function AnalysisResult<T extends { isSafe?: boolean; reasoning?: string }>({ state, pending: externalPending }: AnalysisResultProps<T>) {
+  const { pending: formPending } = useFormStatus();
+  const pending = formPending || externalPending;
 
   if (pending) {
     return <ResultSkeleton />;
@@ -60,7 +62,7 @@ export function AnalysisResult<T extends { isSafe?: boolean; reasoning?: string 
           <XCircle className="h-16 w-16 text-red-500" />
         )}
         <CardTitle className={`text-2xl font-bold font-headline ${isSafe ? 'text-green-600' : 'text-red-600'}`}>
-          This link is {isSafe ? 'likely safe' : 'potentially unsafe'}
+          This is {isSafe ? 'likely safe' : 'potentially unsafe'}
         </CardTitle>
       </CardHeader>
       <CardContent>

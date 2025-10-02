@@ -74,7 +74,15 @@ export async function performQrAnalysis(
   prevState: any,
   formData: FormData
 ): Promise<AnalysisState<AnalyzeQrCodeSafetyOutput>> {
-  const validatedFields = qrCodeSchema.safeParse(formData.get('qrCodeDataUri'));
+  const dataUri = formData.get('qrCodeDataUri');
+  
+  if (!dataUri) {
+     return {
+      error: 'No QR code provided',
+    };
+  }
+
+  const validatedFields = qrCodeSchema.safeParse(dataUri);
 
   if (!validatedFields.success) {
     return {

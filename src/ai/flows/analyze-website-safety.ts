@@ -19,6 +19,7 @@ export type AnalyzeWebsiteSafetyInput = z.infer<typeof AnalyzeWebsiteSafetyInput
 const AnalyzeWebsiteSafetyOutputSchema = z.object({
   isSafe: z.boolean().describe('Whether the website is safe or not.'),
   reasoning: z.string().describe('The reasoning behind the safety verdict.'),
+  url: z.string().optional().describe('The URL that was analyzed.'),
 });
 export type AnalyzeWebsiteSafetyOutput = z.infer<typeof AnalyzeWebsiteSafetyOutputSchema>;
 
@@ -44,7 +45,7 @@ Consider factors such as:
 
 Based on your analysis, determine if the website is safe or potentially fraudulent. Provide a concise explanation for your verdict.
 
-Output should be structured as a JSON object that conforms to AnalyzeWebsiteSafetyOutputSchema. Make sure to set isSafe to true if safe, and false if unsafe. The reasoning field should contain the bulk of your analysis. Do not include any preamble or postamble in your response.`,
+Output should be structured as a JSON object that conforms to AnalyzeWebsiteSafetyOutputSchema. Make sure to set isSafe to true if safe, and false if unsafe. The reasoning field should contain the bulk of your analysis. Also include the original url in the output. Do not include any preamble or postamble in your response.`,
 });
 
 const analyzeWebsiteSafetyFlow = ai.defineFlow(
