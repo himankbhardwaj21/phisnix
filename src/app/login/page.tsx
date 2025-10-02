@@ -8,6 +8,9 @@ import {
   signInWithEmailAndPassword,
   sendPasswordResetEmail,
   AuthError,
+  signInWithPopup,
+  GoogleAuthProvider,
+  OAuthProvider,
 } from 'firebase/auth';
 import { useFirebase } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
@@ -46,6 +49,10 @@ export default function LoginPage() {
         return 'The password is too weak. Please use at least 6 characters.';
       case 'auth/invalid-email':
         return 'Please enter a valid email address.';
+      case 'auth/popup-closed-by-user':
+        return 'Sign-in process was cancelled.';
+      case 'auth/account-exists-with-different-credential':
+        return 'An account already exists with the same email address but different sign-in credentials.';
       default:
         return 'An unexpected error occurred. Please try again.';
     }
@@ -94,6 +101,24 @@ export default function LoginPage() {
     }
   };
 
+  const handleOAuthSignIn = async (providerName: 'google' | 'outlook') => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const provider =
+        providerName === 'google'
+          ? new GoogleAuthProvider()
+          : new OAuthProvider('microsoft.com');
+      await signInWithPopup(auth, provider);
+      router.push('/');
+    } catch (err) {
+      setError(handleAuthError(err as AuthError));
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+
   return (
     <div className="w-full min-h-screen flex items-center justify-center">
       <div className="flex items-center justify-center py-12">
@@ -114,12 +139,12 @@ export default function LoginPage() {
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-2 gap-4 mb-6">
-                <Button variant="outline">
-                  <GoogleIcon className="mr-2 h-4 w-4" />
+                <Button variant="outline" onClick={() => handleOAuthSignIn('google')} disabled={isLoading}>
+                  {isLoading ? <LoaderCircle className="animate-spin" /> : <GoogleIcon className="mr-2 h-4 w-4" />}
                   Google
                 </Button>
-                <Button variant="outline">
-                  <OutlookIcon className="mr-2 h-4 w-4" />
+                <Button variant="outline" onClick={() => handleOAuthSignIn('outlook')} disabled={isLoading}>
+                  {isLoading ? <LoaderCircle className="animate-spin" /> : <OutlookIcon className="mr-2 h-4 w-4" />}
                   Outlook
                 </Button>
               </div>
