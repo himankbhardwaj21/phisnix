@@ -79,7 +79,7 @@ function PasswordResetFlow() {
     try {
       const actionCodeSettings = {
         url: `${window.location.origin}/login`, // We don't need user to come back to reset page
-        handleCodeInApp: false, // Let user copy the code
+        handleCodeInApp: true,
       };
       await sendPasswordResetEmail(auth, email, actionCodeSettings);
       toast({
@@ -110,6 +110,7 @@ function PasswordResetFlow() {
           setError(message);
           toast({ variant: 'destructive', title, description: message });
       } finally {
+        setIsVerifying(false);
         setIsLoading(false);
       }
   }
