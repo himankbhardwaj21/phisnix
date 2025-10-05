@@ -8,10 +8,9 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from '@/components/ui/accordion';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import type { AnalysisState } from '@/app/actions';
 import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
-import { cn } from '@/lib/utils';
 
 type AnalysisResultProps<T> = {
   state: AnalysisState<T & { isSafe?: boolean; reasoning?: string, trustScore?: number }>;
@@ -67,6 +66,11 @@ export function AnalysisResult<T extends { isSafe?: boolean; reasoning?: string,
         <CardTitle className={`text-2xl font-bold font-headline ${isSafe ? 'text-green-600' : 'text-red-600'}`}>
           This is {isSafe ? 'likely safe' : 'potentially unsafe'}
         </CardTitle>
+        {trustScore !== undefined && (
+             <CardDescription>
+                Verdict Score: <span className="font-bold">{trustScore}</span> ({isSafe ? 'Safe' : 'Unsafe'})
+            </CardDescription>
+        )}
       </CardHeader>
       <CardContent>
         <Accordion type="single" collapsible className="w-full" defaultValue="item-1">
