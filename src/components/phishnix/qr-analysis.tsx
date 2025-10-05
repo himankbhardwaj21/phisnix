@@ -7,6 +7,7 @@ import Image from 'next/image';
 import { Upload, Camera, X, LoaderCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import jsQR from 'jsqr';
+import { collection, addDoc } from 'firebase/firestore';
 
 import { performQrAnalysis, type AnalysisState } from '@/app/actions';
 import type {
@@ -22,8 +23,23 @@ import {
   DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog';
-import { useUser } from '@/firebase';
+import { useFirebase } from '@/firebase';
 import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
+
+async function saveQrAnalysis(firestore: any, userId: string, data: any) {
+    if (!firestore || !userId) return;
+    try {
+        const analysisData = {
+        ...data,
+        userId: userId,
+        analysisDate: new Date().toISOString(),
+        };
+        const collectionRef = collection(firestore, 'users', userId, 'qrCodeAnalysis');
+        await addDoc(collectionRef, analysisData);
+    } catch (error) {
+        console.error("Error saving QR code analysis:", error);
+    }
+}
 
 
 export function QrAnalysis() {
@@ -32,11 +48,10 @@ export function QrAnalysis() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const { user } = useUser();
+  const { user, firestore } = useFirebase();
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [isScannerOpen, setScannerOpen] = useState(false);
   const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
-  const [idToken, setIdToken] = useState<string | null>(null);
   const [qrContent, setQrContent] = useState<string | null>(null);
   const [isAnalysisPending, startAnalysisTransition] = useTransition();
 
@@ -48,26 +63,15 @@ export function QrAnalysis() {
   const isPending = isAnalysisPending || isActionPending;
 
   useEffect(() => {
-    if (user) {
-      user.getIdToken().then(setIdToken);
-    } else {
-      setIdToken(null);
-    }
-  }, [user]);
-
-  useEffect(() => {
-    if (qrContent && idToken !== undefined) {
+    if (qrContent) {
       startAnalysisTransition(() => {
         const formData = new FormData();
         formData.append('qrCodeContent', qrContent);
-        if (idToken) {
-          formData.append('idToken', idToken);
-        }
         formAction(formData);
       });
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [qrContent, idToken]);
+  }, [qrContent]);
 
 
   useEffect(() => {
@@ -82,11 +86,14 @@ export function QrAnalysis() {
 
   useEffect(() => {
     if (state.data) {
+        if(user) {
+            saveQrAnalysis(firestore, user.uid, {...state.data, qrCodeContent });
+        }
       formRef.current?.reset();
       setImagePreview(null);
       setQrContent(null);
     }
-  }, [state.data]);
+  }, [state.data, firestore, user, qrCodeContent]);
 
 
   const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {

@@ -1,9 +1,10 @@
 
 'use client';
 
-import { useActionState, useEffect, useRef, useState } from 'react';
+import { useActionState, useEffect, useRef } from 'react';
 import { useFormStatus } from 'react-dom';
 import { Search, LoaderCircle } from 'lucide-react';
+import { collection, addDoc } from 'firebase/firestore';
 
 import { performPaymentAnalysis, type AnalysisState } from '@/app/actions';
 import {
@@ -13,7 +14,7 @@ import { Input } from '../ui/input';
 import { Button } from '../ui/button';
 import { AnalysisResult } from './analysis-result';
 import { useToast } from '@/hooks/use-toast';
-import { useUser } from '@/firebase';
+import { useFirebase } from '@/firebase';
 
 function SubmitButton() {
   const { pending } = useFormStatus();
@@ -29,25 +30,34 @@ function SubmitButton() {
   );
 }
 
+async function savePaymentAnalysis(firestore: any, userId: string, data: any) {
+    if (!firestore || !userId) return;
+    try {
+        const analysisData = {
+        ...data,
+        userId: userId,
+        analysisDate: new Date().toISOString(),
+        paymentLink: data.url,
+        };
+        const collectionRef = collection(firestore, 'users', userId, 'paymentAnalysis');
+        await addDoc(collectionRef, analysisData);
+    } catch (error) {
+        console.error("Error saving payment analysis:", error);
+        // Optionally re-throw or handle error in UI
+    }
+}
+
+
 export function PaymentAnalysis() {
   const { toast } = useToast();
   const formRef = useRef<HTMLFormElement>(null);
-  const { user } = useUser();
-  const [idToken, setIdToken] = useState<string | null>(null);
+  const { user, firestore } = useFirebase();
 
   const [state, formAction, isPending] = useActionState<AnalysisState<AnalyzeWebsiteSafetyOutput>, FormData>(
     performPaymentAnalysis,
     {}
   );
   
-  useEffect(() => {
-    if (user) {
-      user.getIdToken().then(setIdToken);
-    } else {
-      setIdToken(null);
-    }
-  }, [user]);
-
   useEffect(() => {
     if (state.error) {
       toast({
@@ -59,15 +69,15 @@ export function PaymentAnalysis() {
   }, [state.error, toast]);
 
   useEffect(() => {
-    if (state.data) {
+    if (state.data && user) {
+        savePaymentAnalysis(firestore, user.uid, state.data);
         formRef.current?.reset();
     }
-  },[state.data])
+  },[state.data, user, firestore])
 
   return (
     <div className="space-y-6">
       <form ref={formRef} action={formAction} className="flex w-full items-start gap-2">
-        {idToken && <input type="hidden" name="idToken" value={idToken} />}
         <div className="flex-1 space-y-1">
           <Input
             name="paymentLink"
