@@ -21,7 +21,7 @@ export function AppHeader() {
   const { user, isUserLoading } = useUser();
 
   const handleContactClick = () => {
-    window.location.href = 'mailto:support@phishnix.com';
+    router.push('/contact');
   };
 
   return (
