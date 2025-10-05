@@ -23,7 +23,7 @@ import { Separator } from '@/components/ui/separator';
 import { Logo } from '@/components/phishnix/logo';
 import { GoogleIcon, OutlookIcon } from '@/components/icons';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { AlertCircle, LoaderCircle, Eye, EyeOff } from 'lucide-react';
+import { AlertCircle, LoaderCircle, Eye, EyeOff, Lock } from 'lucide-react';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -133,8 +133,8 @@ export default function LoginPage() {
 
 
   return (
-    <div className="w-full min-h-screen flex items-center justify-center">
-      <div className="flex items-center justify-center py-12">
+    <div className="w-full min-h-screen flex flex-col items-center justify-center p-4">
+      <div className="flex flex-col items-center justify-center py-12">
         <div className="mx-auto grid w-[350px] gap-6">
           <div className="grid gap-2 text-center">
             <Logo />
@@ -242,6 +242,15 @@ export default function LoginPage() {
             </CardContent>
           </Card>
         </div>
+        <footer className="mt-8 text-center text-xs text-muted-foreground max-w-sm">
+          <div className="flex justify-center items-center gap-2 mb-2">
+            <Lock className="h-4 w-4" />
+            <p className="font-semibold">Your Privacy is Our Priority</p>
+          </div>
+          <p>
+            Your password is end-to-end encrypted. This means we don't have the ability to see, read, or store your password. Your security is built into our system from the ground up.
+          </p>
+        </footer>
       </div>
     </div>
   );
