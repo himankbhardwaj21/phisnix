@@ -66,7 +66,8 @@ export function QrAnalysis() {
         formAction(formData);
       });
     }
-  }, [qrContent, idToken, formAction]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [qrContent, idToken]);
 
 
   useEffect(() => {
@@ -148,35 +149,61 @@ export function QrAnalysis() {
 
   const handleScannerError = (err: any) => {
     console.error('Scanner Error:', err);
-    toast({
+    if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+      setHasCameraPermission(false);
+      setScannerOpen(false);
+      toast({
+        variant: 'destructive',
+        title: 'Camera Access Denied',
+        description: 'Please enable camera permissions in your browser settings to scan QR codes.',
+      });
+    } else {
+       toast({
         variant: 'destructive',
         title: 'Scanner Error',
         description: 'An error occurred while scanning. Please try again.'
-    })
+      });
+    }
   };
   
   const handleScannerOpen = async () => {
+    // We will now ask for permission when the dialog opens, which is better practice.
     setScannerOpen(true);
-    try {
-        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+  }
+
+  useEffect(() => {
+    let stream: MediaStream | null = null;
+
+    const checkCameraPermission = async () => {
+      if (isScannerOpen) {
+        try {
+          if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
             throw new Error('Camera access not supported by this browser.');
-        }
-        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
-        if(videoRef.current){
-          videoRef.current.srcObject = stream;
-        }
-        setHasCameraPermission(true);
-    } catch (error) {
-        console.error('Error accessing camera:', error);
-        setHasCameraPermission(false);
-        toast({
+          }
+          // Request stream to check for permission and to use it.
+          stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+          setHasCameraPermission(true);
+        } catch (error: any) {
+          console.error('Error accessing camera:', error);
+          setHasCameraPermission(false);
+          setScannerOpen(false);
+           toast({
             variant: 'destructive',
             title: 'Camera Access Denied',
             description: 'Please enable camera permissions in your browser settings to scan QR codes.',
-        });
-        setScannerOpen(false);
-    }
-  }
+          });
+        }
+      }
+    };
+    checkCameraPermission();
+
+    return () => {
+      // Stop all tracks on cleanup
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+      }
+    };
+  }, [isScannerOpen, toast]);
 
 
   return (
@@ -237,16 +264,7 @@ export function QrAnalysis() {
         )}
       </form>
 
-      <Dialog open={isScannerOpen} onOpenChange={(isOpen) => {
-        if (!isOpen) {
-          // Stop camera stream when dialog closes
-          const stream = videoRef.current?.srcObject as MediaStream;
-          if (stream) {
-            stream.getTracks().forEach(track => track.stop());
-          }
-        }
-        setScannerOpen(isOpen)
-      }}>
+      <Dialog open={isScannerOpen} onOpenChange={setScannerOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Scan QR Code</DialogTitle>
@@ -255,20 +273,24 @@ export function QrAnalysis() {
             </DialogDescription>
           </DialogHeader>
            <div className="relative w-full aspect-video rounded-md overflow-hidden bg-black">
-                {hasCameraPermission === true && (
+                {isScannerOpen && hasCameraPermission === null && (
+                     <div className="w-full h-full flex items-center justify-center text-muted-foreground">
+                        Requesting camera permission...
+                    </div>
+                )}
+                {isScannerOpen && hasCameraPermission === true && (
                     <QrScanner
                         onScan={handleScan}
                         onError={handleScannerError}
                         constraints={{ video: { facingMode: 'environment' } }}
                         className="w-full h-full"
-                        videoRef={videoRef}
                     />
                 )}
                 {hasCameraPermission === false && (
                     <Alert variant="destructive">
-                        <AlertTitle>Camera Access Required</AlertTitle>
+                        <AlertTitle>Camera Access Denied</AlertTitle>
                         <AlertDescription>
-                        Please allow camera access in your browser to use this feature.
+                        Please allow camera access in your browser settings to use this feature.
                         </AlertDescription>
                     </Alert>
                 )}
