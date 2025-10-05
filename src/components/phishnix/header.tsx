@@ -20,6 +20,10 @@ export function AppHeader() {
   const router = useRouter();
   const { user, isUserLoading } = useUser();
 
+  const handleContactClick = () => {
+    window.location.href = 'mailto:support@phishnix.com';
+  };
+
   return (
     <header className="sticky top-0 z-10 flex h-16 items-center gap-4 border-b bg-background/80 px-4 backdrop-blur-sm md:px-6">
       <Link href="/" className="flex items-center gap-2">
@@ -43,6 +47,7 @@ export function AppHeader() {
             <DropdownMenuLabel>{user ? user.displayName || user.email : 'My Account'}</DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={() => router.push('/profile')}>Profile</DropdownMenuItem>
+            <DropdownMenuItem onClick={handleContactClick}>Contact Us</DropdownMenuItem>
             <DropdownMenuItem disabled>Settings</DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={() => router.push('/login')}>Sign Out</DropdownMenuItem>
