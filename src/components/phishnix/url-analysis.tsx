@@ -13,6 +13,7 @@ import { Input } from '../ui/input';
 import { Button } from '../ui/button';
 import { AnalysisResult } from './analysis-result';
 import { useToast } from '@/hooks/use-toast';
+import { useUser } from '@/firebase';
 
 function SubmitButton() {
   const { pending } = useFormStatus();
@@ -31,10 +32,19 @@ function SubmitButton() {
 export function UrlAnalysis() {
   const { toast } = useToast();
   const formRef = useRef<HTMLFormElement>(null);
+  const { user } = useUser();
   const [state, formAction] = useActionState<AnalysisState<AnalyzeWebsiteSafetyOutput>, FormData>(
     performUrlAnalysis,
     {}
   );
+
+  const formActionWithToken = async (formData: FormData) => {
+    if (user) {
+      const token = await user.getIdToken();
+      formData.append('idToken', token);
+    }
+    formAction(formData);
+  };
 
   useEffect(() => {
     if (state.error) {
@@ -54,7 +64,7 @@ export function UrlAnalysis() {
 
   return (
     <div className="space-y-6">
-      <form ref={formRef} action={formAction} className="flex w-full items-start gap-2">
+      <form ref={formRef} action={formActionWithToken} className="flex w-full items-start gap-2">
         <div className="flex-1 space-y-1">
           <Input
             name="url"

@@ -2,7 +2,6 @@
 import { initializeApp, getApps, App, cert } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 import { getFirestore } from 'firebase-admin/firestore';
-import type { ReadonlyHeaders } from 'next/headers';
 
 const serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT_KEY
   ? JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY)
@@ -23,20 +22,18 @@ export function initializeAdminApp() {
   return { app };
 }
 
-export async function getUserIdFromRequest(headers: ReadonlyHeaders): Promise<string | null> {
-  const authorization = headers.get('Authorization');
-  if (authorization?.startsWith('Bearer ')) {
-    const idToken = authorization.split('Bearer ')[1];
-    try {
-      const { app } = initializeAdminApp();
-      const decodedToken = await app.auth().verifyIdToken(idToken);
-      return decodedToken.uid;
-    } catch (error) {
-      console.error('Error verifying ID token:', error);
-      return null;
-    }
+export async function getUserIdFromRequest(idToken: string | null): Promise<string | null> {
+  if (!idToken) {
+    return null;
   }
-  return null;
+  try {
+    const { app } = initializeAdminApp();
+    const decodedToken = await app.auth().verifyIdToken(idToken);
+    return decodedToken.uid;
+  } catch (error) {
+    console.error('Error verifying ID token:', error);
+    return null;
+  }
 }
 
 type AnalysisType = 'urlAnalysis' | 'paymentAnalysis' | 'qrCodeAnalysis';

@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useActionState } from 'react';
+import { useActionState } from 'react-dom';
 import { useFormStatus } from 'react-dom';
 import { useEffect, useRef, useState, useTransition } from 'react';
 import Image from 'next/image';
@@ -24,6 +24,7 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { AnalyzeWebsiteSafetyOutput } from '@/ai/flows/analyze-website-safety';
+import { useUser } from '@/firebase';
 
 function SubmitButton() {
   const { pending } = useFormStatus();
@@ -39,6 +40,7 @@ export function QrAnalysis() {
   const { toast } = useToast();
   const formRef = useRef<HTMLFormElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { user } = useUser();
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [isScannerOpen, setScannerOpen] = useState(false);
   const [isUrlAnalysisPending, startUrlAnalysisTransition] = useTransition();
@@ -54,6 +56,22 @@ export function QrAnalysis() {
   >(performUrlAnalysis, {});
 
   const state = qrState.data ? qrState : urlState;
+
+  const qrFormActionWithToken = async (formData: FormData) => {
+    if (user) {
+      const token = await user.getIdToken();
+      formData.append('idToken', token);
+    }
+    qrFormAction(formData);
+  };
+  
+  const urlFormActionWithToken = async (formData: FormData) => {
+    if (user) {
+      const token = await user.getIdToken();
+      formData.append('idToken', token);
+    }
+    urlFormAction(formData);
+  };
 
   useEffect(() => {
     if (qrState.error) {
@@ -122,7 +140,7 @@ export function QrAnalysis() {
       const formData = new FormData();
       formData.append('url', data.text);
       startUrlAnalysisTransition(() => {
-        urlFormAction(formData);
+        urlFormActionWithToken(formData);
       });
     }
   };
@@ -139,7 +157,7 @@ export function QrAnalysis() {
 
   return (
     <div className="space-y-6">
-      <form ref={formRef} action={qrFormAction} className="w-full space-y-4">
+      <form ref={formRef} action={qrFormActionWithToken} className="w-full space-y-4">
         <input
           type="file"
           name="qrCodeFile"

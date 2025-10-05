@@ -32,8 +32,17 @@ export default function ProfilePage() {
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (!user) {
+        toast({
+            variant: 'destructive',
+            title: 'Authentication Error',
+            description: 'You must be signed in to update your profile.',
+        });
+        return;
+    }
     startTransition(async () => {
-      const result = await updateUserProfile({ name, phone });
+      const idToken = await user.getIdToken();
+      const result = await updateUserProfile({ name, phone, idToken });
       if (result.error) {
         toast({
           variant: 'destructive',

@@ -15,7 +15,6 @@ import {
 } from '@/ai/flows/analyze-payment-link-safety';
 import { z } from 'zod';
 import { initializeAdminApp, getUserIdFromRequest, saveAnalysisResult } from '@/firebase/server-init';
-import { headers } from 'next/headers';
 
 const urlSchema = z.string().url({ message: 'Please enter a valid URL.' });
 const paymentLinkSchema = z.string().url({ message: 'Please enter a valid payment link URL.' });
@@ -32,6 +31,8 @@ export async function performUrlAnalysis(
   formData: FormData
 ): Promise<AnalysisState<AnalyzeWebsiteSafetyOutput>> {
   const validatedFields = urlSchema.safeParse(formData.get('url'));
+  const idToken = formData.get('idToken') as string | null;
+
 
   if (!validatedFields.success) {
     return {
@@ -42,7 +43,7 @@ export async function performUrlAnalysis(
 
   try {
     const result = await analyzeWebsiteSafety({ url: validatedFields.data });
-    const userId = await getUserIdFromRequest(headers());
+    const userId = await getUserIdFromRequest(idToken);
     if (userId) {
       await saveAnalysisResult('urlAnalysis', { ...result, url: validatedFields.data }, userId);
     }
@@ -58,6 +59,7 @@ export async function performPaymentAnalysis(
   formData: FormData
 ): Promise<AnalysisState<AnalyzePaymentLinkOutput>> {
   const validatedFields = paymentLinkSchema.safeParse(formData.get('paymentLink'));
+  const idToken = formData.get('idToken') as string | null;
 
   if (!validatedFields.success) {
     return {
@@ -68,7 +70,7 @@ export async function performPaymentAnalysis(
 
   try {
     const result = await analyzePaymentLinkSafety({ paymentLink: validatedFields.data });
-    const userId = await getUserIdFromRequest(headers());
+    const userId = await getUserIdFromRequest(idToken);
     if (userId) {
       await saveAnalysisResult('paymentAnalysis', { ...result, paymentLink: validatedFields.data }, userId);
     }
@@ -84,6 +86,7 @@ export async function performQrAnalysis(
   formData: FormData
 ): Promise<AnalysisState<AnalyzeQrCodeSafetyOutput>> {
   const dataUri = formData.get('qrCodeDataUri');
+  const idToken = formData.get('idToken') as string | null;
   
   if (!dataUri) {
      return {
@@ -102,7 +105,7 @@ export async function performQrAnalysis(
 
   try {
     const result = await analyzeQrCodeSafety({ qrCodeDataUri: validatedFields.data });
-    const userId = await getUserIdFromRequest(headers());
+    const userId = await getUserIdFromRequest(idToken);
     if(userId) {
         // We need to figure out what the QR code content is to save it.
         // For now, let's assume the AI gives us the content or we decode it separately.
@@ -117,12 +120,12 @@ export async function performQrAnalysis(
   }
 }
 
-export async function updateUserProfile(data: { name: string, phone: string }): Promise<{ error?: string }> {
+export async function updateUserProfile(data: { name: string, phone: string, idToken: string | null }): Promise<{ error?: string }> {
   try {
     const { app } = initializeAdminApp();
     const auth = app.auth();
     const firestore = app.firestore();
-    const userId = await getUserIdFromRequest(headers());
+    const userId = await getUserIdFromRequest(data.idToken);
 
     if (!userId) {
       throw new Error('User not authenticated.');
