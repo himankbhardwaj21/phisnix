@@ -12,8 +12,7 @@ import { Separator } from '@/components/ui/separator';
 import { User, Mail, Phone, Save, ShieldQuestion, LoaderCircle } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
-import { updateUserProfile } from '@/app/actions';
-import { sendPasswordResetEmail } from 'firebase/auth';
+import { updateProfile, sendPasswordResetEmail } from 'firebase/auth';
 
 export default function ProfilePage() {
   const { user, auth, isUserLoading } = useUser();
@@ -26,7 +25,11 @@ export default function ProfilePage() {
   useEffect(() => {
     if (user) {
       setName(user.displayName || '');
-      setPhone(user.phoneNumber || '');
+      // Phone number from auth is not directly updatable via client,
+      // it's often managed via other means or stored in Firestore.
+      // For this form, we'll assume it's just for display or a separate DB update.
+      // The current setup doesn't support updating the auth phone number from the client.
+      setPhone(user.phoneNumber || ''); 
     }
   }, [user]);
 
@@ -41,18 +44,21 @@ export default function ProfilePage() {
         return;
     }
     startTransition(async () => {
-      const idToken = await user.getIdToken();
-      const result = await updateUserProfile({ name, phone, idToken });
-      if (result.error) {
-        toast({
-          variant: 'destructive',
-          title: 'Update Failed',
-          description: result.error,
-        });
-      } else {
+      try {
+        await updateProfile(user, { displayName: name });
+        // NOTE: Updating phone number on the user object directly via client SDK is not supported.
+        // This would typically be a server-side action with verification.
+        // For now, we only update the display name which is a common client-side operation.
+        
         toast({
           title: 'Profile Updated',
-          description: 'Your changes have been saved successfully.',
+          description: 'Your display name has been saved successfully.',
+        });
+      } catch (error: any) {
+         toast({
+          variant: 'destructive',
+          title: 'Update Failed',
+          description: error.message || 'An unexpected error occurred.',
         });
       }
     });
@@ -150,8 +156,9 @@ export default function ProfilePage() {
                       <Label htmlFor="phone">Phone Number</Label>
                       <div className="relative">
                         <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                        <Input id="phone" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} className="pl-10" placeholder="No phone number provided" disabled={isPending}/>
+                        <Input id="phone" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} className="pl-10" placeholder="No phone number provided" disabled/>
                       </div>
+                      <p className="text-sm text-muted-foreground">Phone number cannot be changed from this screen.</p>
                     </div>
                     <div className="space-y-2">
                       <Label>Password</Label>

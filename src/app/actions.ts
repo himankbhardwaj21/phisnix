@@ -115,34 +115,3 @@ export async function performQrAnalysis(
     return { error: e.message || 'An unexpected error occurred during analysis. Please try again.' };
   }
 }
-
-export async function updateUserProfile(data: { name: string, phone: string, idToken: string | null }): Promise<{ error?: string }> {
-  try {
-    const { app } = initializeAdminApp();
-    const userId = await getUserIdFromRequest(data.idToken);
-    
-    if (!userId) {
-      throw new Error('User not authenticated.');
-    }
-    
-    const auth = app.auth();
-    const firestore = app.firestore();
-    
-    // Update Firebase Auth
-    await auth.updateUser(userId, {
-      displayName: data.name,
-    });
-
-    // Update Firestore
-    const userRef = firestore.collection('users').doc(userId);
-    await userRef.update({
-      name: data.name,
-      phoneNumber: data.phone,
-    });
-
-    return {};
-  } catch (error: any) {
-    console.error('Error updating profile:', error);
-    return { error: error.message || 'Failed to update profile.' };
-  }
-}
