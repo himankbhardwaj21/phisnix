@@ -1,5 +1,6 @@
 import { AppHeader } from '@/components/phishnix/header';
 import { AnalysisTabs } from '@/components/phishnix/analysis-tabs';
+import { Lock } from 'lucide-react';
 
 export default function Home() {
   return (
@@ -16,6 +17,15 @@ export default function Home() {
         </div>
         <AnalysisTabs />
       </main>
+      <footer className="mt-auto py-8 text-center text-xs text-muted-foreground">
+          <div className="flex justify-center items-center gap-2 mb-2">
+            <Lock className="h-4 w-4" />
+            <p className="font-semibold">Your Privacy is Protected</p>
+          </div>
+          <p className="max-w-md mx-auto">
+            For authenticated users, analysis history is saved to your account for your convenience. We are committed to your privacy and do not share your data with third parties.
+          </p>
+      </footer>
     </div>
   );
 }
