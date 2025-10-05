@@ -25,21 +25,11 @@ import {
 import { useUser } from '@/firebase';
 import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
 
-function SubmitButton() {
-  const { pending } = useFormStatus();
-  return (
-    <Button type="submit" disabled={pending} className="w-full">
-      {pending ? <LoaderCircle className="animate-spin" /> : <Search />}
-      <span className="ml-2">Analyze QR Code Image</span>
-    </Button>
-  );
-}
 
 export function QrAnalysis() {
   const { toast } = useToast();
   const formRef = useRef<HTMLFormElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const videoRef = useRef<HTMLVideoElement>(null);
   const { user } = useUser();
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [isScannerOpen, setScannerOpen] = useState(false);
@@ -80,83 +70,47 @@ export function QrAnalysis() {
   }, [state.data]);
 
 
-  useEffect(() => {
-    if (isScannerOpen) {
-      const getCameraPermission = async () => {
-        try {
-          // Check for mediaDevices support
-          if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-            throw new Error('Camera access not supported by this browser.');
-          }
-          const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
-          setHasCameraPermission(true);
-
-          if (videoRef.current) {
-            videoRef.current.srcObject = stream;
-          }
-        } catch (error) {
-          console.error('Error accessing camera:', error);
-          setHasCameraPermission(false);
-          toast({
-            variant: 'destructive',
-            title: 'Camera Access Denied',
-            description: 'Please enable camera permissions in your browser settings to scan QR codes.',
-          });
-          setScannerOpen(false); // Close dialog if permission is denied
-        }
-      };
-      getCameraPermission();
-    } else {
-        // Stop camera stream when scanner is closed
-        if (videoRef.current && videoRef.current.srcObject) {
-            const stream = videoRef.current.srcObject as MediaStream;
-            stream.getTracks().forEach(track => track.stop());
-            videoRef.current.srcObject = null;
-        }
-    }
-  }, [isScannerOpen, toast]);
-
-
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      // Decode the image file using react-qr-scanner's built-in logic
-       const qrScanner = new QrScanner({
-         onScan: () => {},
-         onError: () => {},
-         // A dummy component is needed but it won't be rendered
-         legacyMode: true,
-       });
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const result = reader.result as string;
+        setImagePreview(result);
+        const formData = new FormData();
 
-       qrScanner.scanFile(file, true)
-        .then((result: string | null) => {
-            if (result) {
-                const formData = new FormData();
-                formData.append('qrCodeContent', result);
-                qrFormActionWithToken(formData);
-                const reader = new FileReader();
-                reader.onloadend = () => {
-                    setImagePreview(reader.result as string);
-                };
-                reader.readAsDataURL(file);
-            } else {
-                 toast({
+        const qrScanner = new QrScanner({
+            onScan: () => {},
+            onError: () => {},
+            legacyMode: true,
+        });
+
+        qrScanner.scanFile(file, true)
+            .then(qrContent => {
+                if (qrContent) {
+                    formData.append('qrCodeContent', qrContent);
+                    qrFormActionWithToken(formData);
+                } else {
+                    toast({
+                        variant: 'destructive',
+                        title: 'Scan Failed',
+                        description: 'No QR code could be found in the uploaded image.',
+                    });
+                    handleRemoveImage();
+                }
+            })
+            .catch(err => {
+                console.error('File Scan Error:', err);
+                toast({
                     variant: 'destructive',
                     title: 'Scan Failed',
-                    description: 'No QR code could be found in the uploaded image.',
+                    description: err.message || 'Could not scan the selected file.',
                 });
                 handleRemoveImage();
-            }
-        })
-        .catch((err: any) => {
-            console.error('File Scan Error:', err)
-            toast({
-                variant: 'destructive',
-                title: 'Scan Failed',
-                description: err.message || 'Could not scan the selected file.',
             });
-            handleRemoveImage();
-        });
+
+      };
+      reader.readAsDataURL(file);
     }
   };
 
@@ -178,24 +132,37 @@ export function QrAnalysis() {
 
   const handleScannerError = (err: any) => {
     console.error('Scanner Error:', err);
-    setScannerOpen(false);
     toast({
         variant: 'destructive',
         title: 'Scanner Error',
         description: 'An error occurred while scanning. Please try again.'
     })
   };
+  
+  const handleScannerOpen = async () => {
+    setScannerOpen(true);
+    try {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            throw new Error('Camera access not supported by this browser.');
+        }
+        await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+        setHasCameraPermission(true);
+    } catch (error) {
+        console.error('Error accessing camera:', error);
+        setHasCameraPermission(false);
+        toast({
+            variant: 'destructive',
+            title: 'Camera Access Denied',
+            description: 'Please enable camera permissions in your browser settings to scan QR codes.',
+        });
+        setScannerOpen(false);
+    }
+  }
+
 
   return (
     <div className="space-y-6">
-      <form ref={formRef} onSubmit={(e) => {
-          e.preventDefault();
-          if (imagePreview) {
-              // This submit is for file uploads, which are now handled in handleFileChange
-              // So we can just prevent default and maybe trigger analysis if needed,
-              // but the analysis is already triggered on file select.
-          }
-      }} className="w-full space-y-4">
+      <form ref={formRef} className="w-full space-y-4">
         <input
           type="file"
           name="qrCodeFile"
@@ -204,7 +171,6 @@ export function QrAnalysis() {
           className="hidden"
           accept="image/png, image/jpeg, image/webp"
         />
-        <input type="hidden" name="qrCodeDataUri" value={imagePreview || ''} />
 
         {imagePreview ? (
           <div className="w-full space-y-4">
@@ -224,7 +190,6 @@ export function QrAnalysis() {
                 <X className="h-4 w-4" />
               </Button>
             </div>
-            {/* The Submit button is no longer needed here as analysis happens on file select */}
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-4">
@@ -244,7 +209,7 @@ export function QrAnalysis() {
               variant="outline"
               type="button"
               className="w-full"
-              onClick={() => setScannerOpen(true)}
+              onClick={handleScannerOpen}
             >
               <Camera className="mr-2" />
               Scan QR Code with Camera
@@ -262,13 +227,21 @@ export function QrAnalysis() {
             </DialogDescription>
           </DialogHeader>
            <div className="relative w-full aspect-video rounded-md overflow-hidden bg-black">
-                {isScannerOpen && (
+                {hasCameraPermission === true && (
                     <QrScanner
                         onScan={handleScan}
                         onError={handleScannerError}
                         constraints={{ video: { facingMode: 'environment' } }}
                         className="w-full h-full"
                     />
+                )}
+                {hasCameraPermission === false && (
+                    <Alert variant="destructive">
+                        <AlertTitle>Camera Access Required</AlertTitle>
+                        <AlertDescription>
+                        Please allow camera access in your browser to use this feature.
+                        </AlertDescription>
+                    </Alert>
                 )}
            </div>
           <DialogFooter>
