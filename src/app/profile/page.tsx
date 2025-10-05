@@ -4,11 +4,11 @@ import { useUser } from '@/firebase';
 import { AppHeader } from '@/components/phishnix/header';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
-import { User, Mail, Phone, Save } from 'lucide-react';
+import { User, Mail, Phone, Save, ShieldQuestion } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 
 export default function ProfilePage() {
@@ -24,7 +24,7 @@ export default function ProfilePage() {
         </div>
       </div>
       <Separator />
-      <div className="space-y-4">
+      <div className="space-y-4 pt-4">
         <div className="space-y-2">
             <Skeleton className="h-4 w-24" />
             <Skeleton className="h-10 w-full" />
@@ -58,23 +58,23 @@ export default function ProfilePage() {
               <div className="space-y-6">
                 <div className="flex items-center space-x-4">
                   <Avatar className="h-24 w-24">
-                    <AvatarImage src={user.photoURL || 'https://picsum.photos/seed/user-avatar/100/100'} />
+                    <AvatarImage src={user.photoURL || undefined} data-ai-hint="user avatar" />
                     <AvatarFallback>
                       <User className="h-12 w-12" />
                     </AvatarFallback>
                   </Avatar>
                   <div>
-                    <h2 className="text-2xl font-bold font-headline">{user.displayName || 'No name provided'}</h2>
+                    <h2 className="text-2xl font-bold font-headline">{user.displayName || 'Anonymous User'}</h2>
                     <p className="text-muted-foreground">{user.email}</p>
                   </div>
                 </div>
                 <Separator />
-                <form className="space-y-4">
+                <form className="space-y-4 pt-4">
                     <div className="space-y-2">
                         <Label htmlFor="name">Full Name</Label>
                         <div className="relative">
                             <User className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                            <Input id="name" defaultValue={user.displayName || ''} className="pl-10" />
+                            <Input id="name" defaultValue={user.displayName || ''} className="pl-10" placeholder="Your full name" />
                         </div>
                     </div>
                     <div className="space-y-2">
@@ -91,6 +91,17 @@ export default function ProfilePage() {
                             <Input id="phone" type="tel" defaultValue={user.phoneNumber || ''} className="pl-10" placeholder="No phone number provided" />
                         </div>
                     </div>
+                    <div className="space-y-2">
+                      <Label>Password</Label>
+                      <Button variant="outline" className="w-full md:w-auto" type="button">
+                        <ShieldQuestion className="mr-2 h-4 w-4" />
+                        Send Password Reset Email
+                      </Button>
+                      <p className="text-sm text-muted-foreground">For security reasons, you can reset your password via email.</p>
+                    </div>
+
+                    <Separator className="!mt-6 !mb-4" />
+
                     <Button type="submit" className="w-full md:w-auto">
                         <Save className="mr-2 h-4 w-4" />
                         Save Changes
@@ -98,7 +109,7 @@ export default function ProfilePage() {
                 </form>
               </div>
             ) : (
-                <div className="text-center text-muted-foreground">
+                <div className="text-center py-12 text-muted-foreground">
                     Please sign in to view your profile.
                 </div>
             )}
