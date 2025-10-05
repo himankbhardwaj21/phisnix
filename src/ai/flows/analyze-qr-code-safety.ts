@@ -23,7 +23,7 @@ export type AnalyzeQrCodeSafetyInput = z.infer<typeof AnalyzeQrCodeSafetyInputSc
 const AnalyzeQrCodeSafetyOutputSchema = z.object({
   isSafe: z.boolean().describe('Whether the content is considered safe or not.'),
   reasoning: z.string().describe('The reason for the safety determination.'),
-  trustScore: z.number().min(0).max(100).describe('A score from 0 to 100 representing the trust level of the content.'),
+  trustScore: z.number().min(0).max(1).describe('A score of 0 if unsafe/suspicious, or 1 if safe.'),
   contentType: z.string().describe('The detected type of content (e.g., URL, Text, Contact Card).'),
   extractedUrl: z.string().optional().describe('The URL extracted from the content, if any.'),
 });
@@ -39,14 +39,14 @@ const prompt = ai.definePrompt({
   name: 'analyzeQrCodeSafetyPrompt',
   input: {schema: AnalyzeQrCodeSafetyInputSchema},
   output: {schema: AnalyzeQrCodeSafetyOutputSchema},
-  prompt: `You are an expert in data security and fraud detection. Analyze the following content extracted from a QR code to determine if it is safe or potentially malicious. Provide a trust score from 0 (very unsafe) to 100 (very safe).
+  prompt: `You are an expert in data security and fraud detection. Analyze the following content extracted from a QR code to determine if it is safe or potentially malicious. Provide a trust score of 0 if it is unsafe/suspicious, and 1 if it is safe.
 
 Content: {{{qrCodeContent}}}
 
 1.  First, determine the type of content (e.g., URL, Plain Text, vCard, WiFi credentials).
 2.  If the content is a URL, analyze its safety. Consider factors such as the domain's reputation, SSL certificate, known phishing or malware reports, and suspicious parameters. Set 'extractedUrl' to this URL.
 3.  If the content is plain text or other data, analyze it for any suspicious characteristics. For example, does it contain unusual commands, scripts, or socially engineered messages?
-4.  Provide a clear verdict ('isSafe'), a detailed 'reasoning' for your conclusion, a 'trustScore', and the detected 'contentType'.
+4.  Provide a clear verdict ('isSafe'), a detailed 'reasoning' for your conclusion, a 'trustScore' (0 for unsafe, 1 for safe), and the detected 'contentType'.
 
 Format your output as a JSON object.`,
 });
