@@ -24,6 +24,7 @@ const AnalyzePaymentLinkOutputSchema = z.object({
   reasoning: z
     .string()
     .describe('The reasoning behind the safety assessment.'),
+  trustScore: z.number().min(0).max(100).describe('A score from 0 to 100 representing the trust level of the payment link.')
 });
 export type AnalyzePaymentLinkOutput = z.infer<typeof AnalyzePaymentLinkOutputSchema>;
 
@@ -37,13 +38,13 @@ const analyzePaymentLinkPrompt = ai.definePrompt({
   name: 'analyzePaymentLinkPrompt',
   input: {schema: AnalyzePaymentLinkInputSchema},
   output: {schema: AnalyzePaymentLinkOutputSchema},
-  prompt: `You are an expert in online payment security. Analyze the provided payment gateway link and determine if it is safe or potentially fraudulent. Provide a clear explanation of your reasoning.
+  prompt: `You are an expert in online payment security. Analyze the provided payment gateway link and determine if it is safe or potentially fraudulent. Provide a clear explanation of your reasoning and a trust score from 0 (highly fraudulent) to 100 (completely safe).
 
 Payment Link: {{{paymentLink}}}
 
 Consider factors such as the domain, SSL certificate, reputation, and any suspicious patterns or redirects.  Assess the likelihood of phishing or other malicious activity.
 
-Output your result as a JSON object with "isSafe" and "reasoning" fields.  The reasoning should be detailed and explain how you came to your conclusion.`,
+Output your result as a JSON object with "isSafe", "reasoning", and "trustScore" fields. The reasoning should be detailed and explain how you came to your conclusion.`,
 });
 
 const analyzePaymentLinkSafetyFlow = ai.defineFlow(

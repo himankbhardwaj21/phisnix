@@ -11,9 +11,11 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import type { AnalysisState } from '@/app/actions';
 import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
+import { ProgressCircle } from '../ui/progress-circle';
+import { cn } from '@/lib/utils';
 
 type AnalysisResultProps<T> = {
-  state: AnalysisState<T & { isSafe?: boolean; reasoning?: string }>;
+  state: AnalysisState<T & { isSafe?: boolean; reasoning?: string, trustScore?: number }>;
   pending?: boolean;
 };
 
@@ -31,7 +33,7 @@ const ResultSkeleton = () => (
     </div>
 );
 
-export function AnalysisResult<T extends { isSafe?: boolean; reasoning?: string }>({ state, pending: externalPending }: AnalysisResultProps<T>) {
+export function AnalysisResult<T extends { isSafe?: boolean; reasoning?: string, trustScore?: number }>({ state, pending: externalPending }: AnalysisResultProps<T>) {
   const { pending: formPending } = useFormStatus();
   const pending = formPending || externalPending;
 
@@ -51,16 +53,19 @@ export function AnalysisResult<T extends { isSafe?: boolean; reasoning?: string 
     );
   }
 
-  const { isSafe, reasoning } = state.data;
+  const { isSafe, reasoning, trustScore = 0 } = state.data;
+  const scoreColor = trustScore > 75 ? 'text-green-500' : trustScore > 40 ? 'text-yellow-500' : 'text-red-500';
 
   return (
     <Card className={isSafe ? 'border-green-500/50 bg-green-500/5' : 'border-red-500/50 bg-red-500/5'}>
-      <CardHeader className="items-center text-center">
-        {isSafe ? (
-          <CheckCircle2 className="h-16 w-16 text-green-500" />
-        ) : (
-          <XCircle className="h-16 w-16 text-red-500" />
-        )}
+      <CardHeader className="items-center text-center pb-4">
+        <div className="relative mb-4">
+            <ProgressCircle value={trustScore} size={100} strokeWidth={8} />
+            <div className="absolute inset-0 flex flex-col items-center justify-center">
+                <span className={cn("text-3xl font-bold font-headline", scoreColor)}>{trustScore}</span>
+                <span className="text-xs text-muted-foreground">Trust Score</span>
+            </div>
+        </div>
         <CardTitle className={`text-2xl font-bold font-headline ${isSafe ? 'text-green-600' : 'text-red-600'}`}>
           This is {isSafe ? 'likely safe' : 'potentially unsafe'}
         </CardTitle>

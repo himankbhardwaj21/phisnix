@@ -3,7 +3,6 @@
 
 import {
   analyzeQrCodeSafety,
-  AnalyzeQrCodeSafetyInput,
   AnalyzeQrCodeSafetyOutput,
 } from '@/ai/flows/analyze-qr-code-safety';
 import {
@@ -41,7 +40,7 @@ export async function performUrlAnalysis(
 
   try {
     const result = await analyzeWebsiteSafety({ url: validatedFields.data });
-    return { data: { ...result, isSafe: result.isSafe } };
+    return { data: result };
   } catch (e) {
     console.error(e);
     return { error: 'An unexpected error occurred during analysis. Please try again.' };
@@ -63,7 +62,7 @@ export async function performPaymentAnalysis(
 
   try {
     const result = await analyzePaymentLinkSafety({ paymentLink: validatedFields.data });
-    return { data: { ...result, isSafe: result.isSafe } };
+    return { data: result };
   } catch (e) {
     console.error(e);
     return { error: 'An unexpected error occurred during analysis. Please try again.' };
@@ -93,6 +92,7 @@ export async function performQrAnalysis(
 
   try {
     const result = await analyzeQrCodeSafety({ qrCodeDataUri: validatedFields.data });
+    // Map the 'safe' and 'reason' fields to 'isSafe' and 'reasoning' for consistency
     return { data: { ...result, isSafe: result.safe, reasoning: result.reason } };
   } catch (e) {
     console.error(e);

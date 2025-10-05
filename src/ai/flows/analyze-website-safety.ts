@@ -19,6 +19,7 @@ export type AnalyzeWebsiteSafetyInput = z.infer<typeof AnalyzeWebsiteSafetyInput
 const AnalyzeWebsiteSafetyOutputSchema = z.object({
   isSafe: z.boolean().describe('Whether the website is safe or not.'),
   reasoning: z.string().describe('The reasoning behind the safety verdict.'),
+  trustScore: z.number().min(0).max(100).describe('A score from 0 to 100 representing the trust level of the website.'),
   url: z.string().optional().describe('The URL that was analyzed.'),
 });
 export type AnalyzeWebsiteSafetyOutput = z.infer<typeof AnalyzeWebsiteSafetyOutputSchema>;
@@ -31,21 +32,21 @@ const analyzeWebsiteSafetyPrompt = ai.definePrompt({
   name: 'analyzeWebsiteSafetyPrompt',
   input: {schema: AnalyzeWebsiteSafetyInputSchema},
   output: {schema: AnalyzeWebsiteSafetyOutputSchema},
-  prompt: `You are an expert in website security and fraud detection. Your task is to analyze the safety of a given URL and provide a verdict with clear reasoning.
+  prompt: `You are an expert in website security and fraud detection. Your task is to analyze the safety of a given URL and provide a verdict with clear reasoning and a trust score from 0 (very unsafe) to 100 (very safe).
 
 Analyze the following URL:
 {{{url}}}
 
 Consider factors such as:
 - Domain age and registration information
-- Presence of SSL certificate
+- Presence of an SSL certificate
 - Website content and design (look for suspicious elements)
 - User reviews and reputation
 - Known phishing or malware reports
 
 Based on your analysis, determine if the website is safe or potentially fraudulent. Provide a concise explanation for your verdict.
 
-Output should be structured as a JSON object that conforms to AnalyzeWebsiteSafetyOutputSchema. Make sure to set isSafe to true if safe, and false if unsafe. The reasoning field should contain the bulk of your analysis. Also include the original url in the output. Do not include any preamble or postamble in your response.`,
+Output should be structured as a JSON object that conforms to AnalyzeWebsiteSafetyOutputSchema. Make sure to set isSafe to true if safe, and false if unsafe. The reasoning field should contain the bulk of your analysis. Also include the original url and the trustScore in the output. Do not include any preamble or postamble in your response.`,
 });
 
 const analyzeWebsiteSafetyFlow = ai.defineFlow(
