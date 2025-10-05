@@ -1,12 +1,13 @@
 
 'use client';
 
-import { useActionState, useEffect, useRef, useState, useTransition } from 'react';
-import { useFormStatus } from 'react-dom';
+import { useActionState, useEffect, useRef, useState, useTransition, ChangeEvent } from 'react';
+import React from 'react';
 import Image from 'next/image';
-import { Upload, Search, LoaderCircle, X, Camera } from 'lucide-react';
+import { Upload, Camera, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import QrScanner from 'react-qr-scanner';
+import jsQR from 'jsqr';
 
 import { performQrAnalysis, type AnalysisState } from '@/app/actions';
 import type {
@@ -30,6 +31,7 @@ export function QrAnalysis() {
   const { toast } = useToast();
   const formRef = useRef<HTMLFormElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
   const { user } = useUser();
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [isScannerOpen, setScannerOpen] = useState(false);
@@ -42,14 +44,13 @@ export function QrAnalysis() {
   >(performQrAnalysis, {});
 
   const qrFormActionWithToken = (formData: FormData) => {
-    if (user) {
-      user.getIdToken().then(token => {
-        formData.append('idToken', token);
-        startQrAnalysisTransition(() => formAction(formData));
-      });
-    } else {
-      startQrAnalysisTransition(() => formAction(formData));
-    }
+    startQrAnalysisTransition(async () => {
+        if (user) {
+            const token = await user.getIdToken();
+            formData.append('idToken', token);
+        }
+        formAction(formData);
+    });
   };
 
   useEffect(() => {
@@ -70,49 +71,51 @@ export function QrAnalysis() {
   }, [state.data]);
 
 
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const result = reader.result as string;
-        setImagePreview(result);
-        const formData = new FormData();
+    if (!file) return;
 
-        const qrScanner = new QrScanner({
-            onScan: () => {},
-            onError: () => {},
-            legacyMode: true,
-        });
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const imageUrl = e.target?.result as string;
+      setImagePreview(imageUrl);
 
-        qrScanner.scanFile(file, true)
-            .then(qrContent => {
-                if (qrContent) {
-                    formData.append('qrCodeContent', qrContent);
-                    qrFormActionWithToken(formData);
-                } else {
-                    toast({
-                        variant: 'destructive',
-                        title: 'Scan Failed',
-                        description: 'No QR code could be found in the uploaded image.',
-                    });
-                    handleRemoveImage();
-                }
-            })
-            .catch(err => {
-                console.error('File Scan Error:', err);
-                toast({
-                    variant: 'destructive',
-                    title: 'Scan Failed',
-                    description: err.message || 'Could not scan the selected file.',
-                });
-                handleRemoveImage();
+      const image = document.createElement('img');
+      image.onload = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = image.width;
+        canvas.height = image.height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+            toast({
+                variant: 'destructive',
+                title: 'Scan Failed',
+                description: 'Could not process the image.',
             });
+            return;
+        }
+        ctx.drawImage(image, 0, 0, image.width, image.height);
+        const imageData = ctx.getImageData(0, 0, image.width, image.height);
+        const code = jsQR(imageData.data, imageData.width, imageData.height);
 
+        if (code) {
+          const formData = new FormData();
+          formData.append('qrCodeContent', code.data);
+          qrFormActionWithToken(formData);
+        } else {
+          toast({
+            variant: 'destructive',
+            title: 'Scan Failed',
+            description: 'No QR code could be found in the uploaded image.',
+          });
+          handleRemoveImage();
+        }
       };
-      reader.readAsDataURL(file);
-    }
+      image.src = imageUrl;
+    };
+    reader.readAsDataURL(file);
   };
+
 
   const handleRemoveImage = () => {
     setImagePreview(null);
@@ -145,7 +148,10 @@ export function QrAnalysis() {
         if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
             throw new Error('Camera access not supported by this browser.');
         }
-        await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+        if(videoRef.current){
+          videoRef.current.srcObject = stream;
+        }
         setHasCameraPermission(true);
     } catch (error) {
         console.error('Error accessing camera:', error);
@@ -218,7 +224,16 @@ export function QrAnalysis() {
         )}
       </form>
 
-      <Dialog open={isScannerOpen} onOpenChange={setScannerOpen}>
+      <Dialog open={isScannerOpen} onOpenChange={(isOpen) => {
+        if (!isOpen) {
+          // Stop camera stream when dialog closes
+          const stream = videoRef.current?.srcObject as MediaStream;
+          if (stream) {
+            stream.getTracks().forEach(track => track.stop());
+          }
+        }
+        setScannerOpen(isOpen)
+      }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Scan QR Code</DialogTitle>
@@ -233,6 +248,7 @@ export function QrAnalysis() {
                         onError={handleScannerError}
                         constraints={{ video: { facingMode: 'environment' } }}
                         className="w-full h-full"
+                        videoRef={videoRef}
                     />
                 )}
                 {hasCameraPermission === false && (
