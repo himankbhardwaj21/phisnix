@@ -1,6 +1,7 @@
-
 'use client';
 import { useFormStatus } from 'react-dom';
+import Link from 'next/link';
+import Image from 'next/image';
 import { AlertCircle, CheckCircle2, Info, LoaderCircle, XCircle } from 'lucide-react';
 import {
   Accordion,
@@ -11,10 +12,14 @@ import {
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import type { AnalysisState } from '@/app/actions';
 import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
+import { Separator } from '../ui/separator';
+import { Button } from '../ui/button';
+import { AmazonPayIcon, GooglePayIcon, PaytmIcon, PhonePeIcon } from '../icons';
 
 type AnalysisResultProps<T> = {
   state: AnalysisState<T & { isSafe?: boolean; reasoning?: string, trustScore?: number }>;
   pending?: boolean;
+  type: 'url' | 'payment' | 'qr';
 };
 
 const ResultSkeleton = () => (
@@ -31,7 +36,7 @@ const ResultSkeleton = () => (
     </div>
 );
 
-export function AnalysisResult<T extends { isSafe?: boolean; reasoning?: string, trustScore?: number }>({ state, pending: externalPending }: AnalysisResultProps<T>) {
+export function AnalysisResult<T extends { isSafe?: boolean; reasoning?: string, trustScore?: number }>({ state, pending: externalPending, type }: AnalysisResultProps<T>) {
   const { pending: formPending } = useFormStatus();
   const pending = formPending || externalPending;
 
@@ -52,6 +57,8 @@ export function AnalysisResult<T extends { isSafe?: boolean; reasoning?: string,
   }
 
   const { isSafe, reasoning, trustScore } = state.data;
+  const showPaymentApps = type === 'qr' && isSafe;
+
 
   return (
     <Card className={isSafe ? 'border-green-500/50 bg-green-500/5' : 'border-red-500/50 bg-red-500/5'}>
@@ -74,7 +81,7 @@ export function AnalysisResult<T extends { isSafe?: boolean; reasoning?: string,
       </CardHeader>
       <CardContent>
         <Accordion type="single" collapsible className="w-full" defaultValue="item-1">
-          <AccordionItem value="item-1">
+          <AccordionItem value="item-1" className={showPaymentApps ? 'border-b' : 'border-b-0'}>
             <AccordionTrigger>
               <div className='flex items-center gap-2'>
                 <AlertCircle className='h-5 w-5' />
@@ -86,6 +93,30 @@ export function AnalysisResult<T extends { isSafe?: boolean; reasoning?: string,
             </AccordionContent>
           </AccordionItem>
         </Accordion>
+        {showPaymentApps && (
+            <div className="pt-4 text-center">
+                <p className="text-sm font-medium text-muted-foreground mb-4">Ready to pay? Open a payment app:</p>
+                <div className="grid grid-cols-4 gap-4">
+                    <Link href="paytmmp://" target="_blank" className="flex flex-col items-center gap-2 text-xs font-medium text-center transition-transform hover:scale-105">
+                        <PaytmIcon className="w-12 h-12" />
+                        <span>Paytm</span>
+                    </Link>
+                    <Link href="gpay://" target="_blank" className="flex flex-col items-center gap-2 text-xs font-medium text-center transition-transform hover:scale-105">
+                        <GooglePayIcon className="w-12 h-12" />
+                        <span>Google Pay</span>
+                    </Link>
+                    <Link href="phonepe://" target="_blank" className="flex flex-col items-center gap-2 text-xs font-medium text-center transition-transform hover:scale-105">
+                        <PhonePeIcon className="w-12 h-12" />
+                        <span>PhonePe</span>
+                    </Link>
+                    <Link href="upi://pay" target="_blank" className="flex flex-col items-center gap-2 text-xs font-medium text-center transition-transform hover:scale-105">
+                        <AmazonPayIcon className="w-12 h-12" />
+                        <span>Amazon Pay</span>
+                    </Link>
+                </div>
+                 <p className="text-xs text-muted-foreground mt-4">(This will only work on mobile devices with the app installed)</p>
+            </div>
+        )}
       </CardContent>
     </Card>
   );

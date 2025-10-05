@@ -280,7 +280,7 @@ export function QrAnalysis() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      <AnalysisResult state={state} pending={isPending} />
+      <AnalysisResult state={state} pending={isPending} type="qr" />
     </div>
   );
 }

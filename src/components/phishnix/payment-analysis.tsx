@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useActionState, useEffect, useRef, useState, useTransition } from 'react';
+import { useActionState, useEffect, useRef, useState } from 'react';
 import { useFormStatus } from 'react-dom';
 import { Search, LoaderCircle } from 'lucide-react';
 
@@ -82,7 +82,7 @@ export function PaymentAnalysis() {
         </div>
         <SubmitButton />
       </form>
-      <AnalysisResult<AnalyzeWebsiteSafetyOutput> state={state} pending={isPending} />
+      <AnalysisResult<AnalyzeWebsiteSafetyOutput> state={state} pending={isPending} type="payment" />
     </div>
   );
 }
