@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useTransition } from 'react';
+import { useRouter } from 'next/navigation';
 import { useFirebase, useUser } from '@/firebase';
 import { AppHeader } from '@/components/phishnix/header';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -12,11 +13,12 @@ import { Separator } from '@/components/ui/separator';
 import { User, Mail, Phone, Save, ShieldQuestion, LoaderCircle } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
-import { updateProfile, sendPasswordResetEmail } from 'firebase/auth';
+import { updateProfile } from 'firebase/auth';
 
 export default function ProfilePage() {
   const { user, isUserLoading } = useUser();
   const { auth } = useFirebase();
+  const router = useRouter();
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
 
@@ -65,22 +67,8 @@ export default function ProfilePage() {
     });
   };
 
-  const handlePasswordReset = async () => {
-    if (user?.email) {
-      try {
-        await sendPasswordResetEmail(auth, user.email);
-        toast({
-          title: 'Password Reset Email Sent',
-          description: 'Check your inbox for instructions to reset your password.',
-        });
-      } catch (error: any) {
-        toast({
-          variant: 'destructive',
-          title: 'Error',
-          description: error.message || 'Failed to send password reset email.',
-        });
-      }
-    }
+  const handlePasswordReset = () => {
+    router.push('/reset-password');
   };
 
 
@@ -165,9 +153,9 @@ export default function ProfilePage() {
                       <Label>Password</Label>
                        <Button variant="outline" className="w-full md:w-auto" type="button" onClick={handlePasswordReset} disabled={isPending}>
                         <ShieldQuestion className="mr-2 h-4 w-4" />
-                        Send Password Reset Email
+                        Reset Password
                       </Button>
-                      <p className="text-sm text-muted-foreground">For security reasons, you can reset your password via email.</p>
+                      <p className="text-sm text-muted-foreground">Reset your password via an email-based OTP.</p>
                     </div>
 
                     <Separator className="!mt-6 !mb-4" />

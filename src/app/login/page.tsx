@@ -6,7 +6,6 @@ import { useState } from 'react';
 import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
-  sendPasswordResetEmail,
   AuthError,
   signInWithPopup,
   GoogleAuthProvider,
@@ -85,24 +84,8 @@ export default function LoginPage() {
     }
   };
 
-  const handlePasswordReset = async () => {
-    if (!email) {
-      setError('Please enter your email address to reset your password.');
-      return;
-    }
-    setIsLoading(true);
-    setError(null);
-    try {
-      await sendPasswordResetEmail(auth, email);
-      toast({
-        title: 'Password Reset Email Sent',
-        description: 'Check your inbox for instructions to reset your password.',
-      });
-    } catch (err) {
-      setError(handleAuthError(err as AuthError));
-    } finally {
-      setIsLoading(false);
-    }
+  const handlePasswordReset = () => {
+    router.push('/reset-password');
   };
 
   const handleOAuthSignIn = async (providerName: 'google' | 'outlook') => {
@@ -133,13 +116,15 @@ export default function LoginPage() {
 
 
   return (
-    <div className="w-full min-h-screen flex flex-col items-center justify-center p-4">
+    <div className="w-full min-h-screen flex flex-col items-center justify-center p-4 bg-background">
+       <div className="absolute top-4 left-4">
+        <Link href="/" aria-label="PhishNix Home">
+          <Logo />
+        </Link>
+      </div>
       <div className="flex flex-col items-center justify-center py-12">
         <div className="mx-auto grid w-[350px] gap-6">
           <div className="grid gap-2 text-center">
-            <Link href="/" aria-label="PhishNix Home">
-              <Logo />
-            </Link>
             <h1 className="text-3xl font-bold font-headline">{isSignUp ? 'Create an account' : 'Welcome back'}</h1>
             <p className="text-balance text-muted-foreground">
               {isSignUp ? 'Enter your information to create an account' : 'Enter your credentials to access your account'}
