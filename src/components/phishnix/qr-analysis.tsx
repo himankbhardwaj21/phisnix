@@ -87,13 +87,13 @@ export function QrAnalysis() {
   useEffect(() => {
     if (state.data) {
         if(user) {
-            saveQrAnalysis(firestore, user.uid, {...state.data, qrCodeContent });
+            saveQrAnalysis(firestore, user.uid, state.data);
         }
       formRef.current?.reset();
       setImagePreview(null);
       setQrContent(null);
     }
-  }, [state.data, firestore, user, qrCodeContent]);
+  }, [state.data, firestore, user]);
 
 
   const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
