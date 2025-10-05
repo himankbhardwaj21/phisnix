@@ -4,9 +4,8 @@
 import { useActionState, useEffect, useRef, useState, ChangeEvent, useTransition } from 'react';
 import React from 'react';
 import Image from 'next/image';
-import { Upload, Camera, X } from 'lucide-react';
+import { Upload, Camera, X, LoaderCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import QrScanner from 'react-qr-scanner';
 import jsQR from 'jsqr';
 
 import { performQrAnalysis, type AnalysisState } from '@/app/actions';
@@ -32,6 +31,7 @@ export function QrAnalysis() {
   const formRef = useRef<HTMLFormElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
   const { user } = useUser();
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [isScannerOpen, setScannerOpen] = useState(false);
@@ -140,70 +140,75 @@ export function QrAnalysis() {
     }
   };
 
-  const handleScan = (data: any) => {
-    if (data) {
-      setScannerOpen(false);
-      setQrContent(data.text);
+  const tick = () => {
+    if (videoRef.current && videoRef.current.readyState === videoRef.current.HAVE_ENOUGH_DATA && canvasRef.current) {
+      const video = videoRef.current;
+      const canvas = canvasRef.current;
+      const ctx = canvas.getContext('2d');
+
+      if (ctx) {
+        canvas.height = video.videoHeight;
+        canvas.width = video.videoWidth;
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const code = jsQR(imageData.data, imageData.width, imageData.height, {
+          inversionAttempts: 'dontInvert',
+        });
+
+        if (code) {
+          setQrContent(code.data);
+          setScannerOpen(false); // Close scanner on successful scan
+          return; // Stop scanning
+        }
+      }
+    }
+    if (isScannerOpen) {
+      requestAnimationFrame(tick);
     }
   };
 
-  const handleScannerError = (err: any) => {
-    console.error('Scanner Error:', err);
-    if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
-      setHasCameraPermission(false);
-      setScannerOpen(false);
-      toast({
-        variant: 'destructive',
-        title: 'Camera Access Denied',
-        description: 'Please enable camera permissions in your browser settings to scan QR codes.',
-      });
-    } else {
-       toast({
-        variant: 'destructive',
-        title: 'Scanner Error',
-        description: 'An error occurred while scanning. Please try again.'
-      });
-    }
-  };
-  
   const handleScannerOpen = async () => {
-    // We will now ask for permission when the dialog opens, which is better practice.
     setScannerOpen(true);
   }
 
   useEffect(() => {
     let stream: MediaStream | null = null;
-
-    const checkCameraPermission = async () => {
-      if (isScannerOpen) {
-        try {
-          if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-            throw new Error('Camera access not supported by this browser.');
-          }
-          // Request stream to check for permission and to use it.
-          stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
-          setHasCameraPermission(true);
-        } catch (error: any) {
-          console.error('Error accessing camera:', error);
-          setHasCameraPermission(false);
-          setScannerOpen(false);
-           toast({
-            variant: 'destructive',
-            title: 'Camera Access Denied',
-            description: 'Please enable camera permissions in your browser settings to scan QR codes.',
+    const openCamera = async () => {
+      try {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+          throw new Error('Camera access not supported by this browser.');
+        }
+        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+        setHasCameraPermission(true);
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          videoRef.current.addEventListener('loadeddata', () => {
+            requestAnimationFrame(tick);
           });
         }
+      } catch (error: any) {
+        console.error('Error accessing camera:', error);
+        setHasCameraPermission(false);
+        setScannerOpen(false);
+         toast({
+          variant: 'destructive',
+          title: 'Camera Access Denied',
+          description: 'Please enable camera permissions in your browser settings to scan QR codes.',
+        });
       }
-    };
-    checkCameraPermission();
+    }
+
+    if (isScannerOpen) {
+      openCamera();
+    }
 
     return () => {
-      // Stop all tracks on cleanup
       if (stream) {
         stream.getTracks().forEach(track => track.stop());
       }
     };
-  }, [isScannerOpen, toast]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isScannerOpen]);
 
 
   return (
@@ -221,20 +226,29 @@ export function QrAnalysis() {
         {imagePreview ? (
           <div className="w-full space-y-4">
             <div className="relative mx-auto h-48 w-48 rounded-lg border-2 border-dashed flex items-center justify-center overflow-hidden">
-              <Image
-                src={imagePreview}
-                alt="QR Code Preview"
-                fill
-                className="object-contain p-2"
-              />
-              <Button
-                variant="destructive"
-                size="icon"
-                className="absolute top-1 right-1 h-7 w-7 z-10"
-                onClick={handleRemoveImage}
-              >
-                <X className="h-4 w-4" />
-              </Button>
+             {isPending && !state.data ? (
+                <div className="flex flex-col items-center gap-2">
+                  <LoaderCircle className="animate-spin h-8 w-8 text-muted-foreground" />
+                  <p className="text-sm text-muted-foreground">Analyzing...</p>
+                </div>
+              ) : (
+                <>
+                  <Image
+                    src={imagePreview}
+                    alt="QR Code Preview"
+                    fill
+                    className="object-contain p-2"
+                  />
+                  <Button
+                    variant="destructive"
+                    size="icon"
+                    className="absolute top-1 right-1 h-7 w-7 z-10"
+                    onClick={handleRemoveImage}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </>
+              )}
             </div>
           </div>
         ) : (
@@ -273,19 +287,13 @@ export function QrAnalysis() {
             </DialogDescription>
           </DialogHeader>
            <div className="relative w-full aspect-video rounded-md overflow-hidden bg-black">
-                {isScannerOpen && hasCameraPermission === null && (
+                {hasCameraPermission === null && (
                      <div className="w-full h-full flex items-center justify-center text-muted-foreground">
                         Requesting camera permission...
                     </div>
                 )}
-                {isScannerOpen && hasCameraPermission === true && (
-                    <QrScanner
-                        onScan={handleScan}
-                        onError={handleScannerError}
-                        constraints={{ video: { facingMode: 'environment' } }}
-                        className="w-full h-full"
-                    />
-                )}
+                 <video ref={videoRef} className="w-full h-full object-cover" autoPlay playsInline muted />
+                 <canvas ref={canvasRef} className="hidden" />
                 {hasCameraPermission === false && (
                     <Alert variant="destructive">
                         <AlertTitle>Camera Access Denied</AlertTitle>
