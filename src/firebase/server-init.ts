@@ -19,8 +19,29 @@ export function initializeAdminApp() {
     // This is not a hard error, as some actions might not need the admin app.
     // Functions that do need it should handle the 'null' app case.
     const mockApp = {
-        auth: () => ({ verifyIdToken: async () => null, updateUser: async () => {} }),
-        firestore: () => ({ collection: () => ({ doc: () => ({ collection: () => ({ add: async () => {} }), update: async () => {} }) }) })
+        auth: () => ({ 
+            verifyIdToken: async (token: string | null) => {
+                if (!token) return null;
+                // This is a mock for local dev without service account.
+                // It's not secure but allows frontend to proceed.
+                // In a real env, service account should be present.
+                try {
+                    const decoded = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());
+                    return { uid: decoded.user_id };
+                } catch (e) {
+                    return null;
+                }
+            }, 
+            updateUser: async () => { throw new Error('Server not configured for this action.'); } 
+        }),
+        firestore: () => ({ 
+            collection: () => ({ 
+                doc: () => ({ 
+                    collection: () => ({ add: async () => { throw new Error('Server not configured for this action.'); } }), 
+                    update: async () => { throw new Error('Server not configured for this action.'); } 
+                }) 
+            }) 
+        })
     };
     // @ts-ignore
     return { app: mockApp as App };
@@ -71,6 +92,10 @@ export async function saveAnalysisResult(
     await collectionRef.add(analysisData);
   } catch (error) {
     console.error(`Error saving ${analysisType} result:`, error);
+    // Forward the specific error from the mock if it exists.
+    if (error instanceof Error && error.message.includes('Server not configured')) {
+        throw error;
+    }
     throw new Error(`Failed to save analysis result.`);
   }
 }

@@ -119,13 +119,14 @@ export async function performQrAnalysis(
 export async function updateUserProfile(data: { name: string, phone: string, idToken: string | null }): Promise<{ error?: string }> {
   try {
     const { app } = initializeAdminApp();
-    const auth = app.auth();
-    const firestore = app.firestore();
     const userId = await getUserIdFromRequest(data.idToken);
-
+    
     if (!userId) {
       throw new Error('User not authenticated.');
     }
+    
+    const auth = app.auth();
+    const firestore = app.firestore();
     
     // Update Firebase Auth
     await auth.updateUser(userId, {
