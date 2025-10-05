@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useActionState, useEffect, useRef, useState, ChangeEvent } from 'react';
+import { useActionState, useEffect, useRef, useState, ChangeEvent, useTransition } from 'react';
 import React from 'react';
 import Image from 'next/image';
 import { Upload, Camera, X } from 'lucide-react';
@@ -37,11 +37,15 @@ export function QrAnalysis() {
   const [isScannerOpen, setScannerOpen] = useState(false);
   const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
   const [idToken, setIdToken] = useState<string | null>(null);
+  const [qrContent, setQrContent] = useState<string | null>(null);
+  const [isAnalysisPending, startAnalysisTransition] = useTransition();
 
-  const [state, formAction, isQrAnalysisPending] = useActionState<
+  const [state, formAction, isActionPending] = useActionState<
     AnalysisState<AnalyzeQrCodeSafetyOutput>,
     FormData
   >(performQrAnalysis, {});
+
+  const isPending = isAnalysisPending || isActionPending;
 
   useEffect(() => {
     if (user) {
@@ -51,12 +55,19 @@ export function QrAnalysis() {
     }
   }, [user]);
 
-  const handleFormAction = (formData: FormData) => {
-    if (idToken) {
-      formData.append('idToken', idToken);
+  useEffect(() => {
+    if (qrContent && idToken !== undefined) {
+      startAnalysisTransition(() => {
+        const formData = new FormData();
+        formData.append('qrCodeContent', qrContent);
+        if (idToken) {
+          formData.append('idToken', idToken);
+        }
+        formAction(formData);
+      });
     }
-    formAction(formData);
-  }
+  }, [qrContent, idToken, formAction]);
+
 
   useEffect(() => {
     if (state.error) {
@@ -72,6 +83,7 @@ export function QrAnalysis() {
     if (state.data) {
       formRef.current?.reset();
       setImagePreview(null);
+      setQrContent(null);
     }
   }, [state.data]);
 
@@ -104,9 +116,7 @@ export function QrAnalysis() {
         const code = jsQR(imageData.data, imageData.width, imageData.height);
 
         if (code) {
-          const formData = new FormData();
-          formData.append('qrCodeContent', code.data);
-          handleFormAction(formData);
+          setQrContent(code.data);
         } else {
           toast({
             variant: 'destructive',
@@ -132,9 +142,7 @@ export function QrAnalysis() {
   const handleScan = (data: any) => {
     if (data) {
       setScannerOpen(false);
-      const formData = new FormData();
-      formData.append('qrCodeContent', data.text);
-      handleFormAction(formData);
+      setQrContent(data.text);
     }
   };
 
@@ -272,7 +280,7 @@ export function QrAnalysis() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      <AnalysisResult state={state} pending={isQrAnalysisPending} />
+      <AnalysisResult state={state} pending={isPending} />
     </div>
   );
 }
