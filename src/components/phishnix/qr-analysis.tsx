@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useActionState, useEffect, useRef, useState, useTransition, ChangeEvent } from 'react';
+import { useActionState, useEffect, useRef, useState, ChangeEvent } from 'react';
 import React from 'react';
 import Image from 'next/image';
 import { Upload, Camera, X } from 'lucide-react';
@@ -36,22 +36,27 @@ export function QrAnalysis() {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [isScannerOpen, setScannerOpen] = useState(false);
   const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
-  const [isQrAnalysisPending, startQrAnalysisTransition] = useTransition();
+  const [idToken, setIdToken] = useState<string | null>(null);
 
-  const [state, formAction] = useActionState<
+  const [state, formAction, isQrAnalysisPending] = useActionState<
     AnalysisState<AnalyzeQrCodeSafetyOutput>,
     FormData
   >(performQrAnalysis, {});
 
-  const qrFormActionWithToken = (formData: FormData) => {
-    startQrAnalysisTransition(async () => {
-        if (user) {
-            const token = await user.getIdToken();
-            formData.append('idToken', token);
-        }
-        formAction(formData);
-    });
-  };
+  useEffect(() => {
+    if (user) {
+      user.getIdToken().then(setIdToken);
+    } else {
+      setIdToken(null);
+    }
+  }, [user]);
+
+  const handleFormAction = (formData: FormData) => {
+    if (idToken) {
+      formData.append('idToken', idToken);
+    }
+    formAction(formData);
+  }
 
   useEffect(() => {
     if (state.error) {
@@ -101,7 +106,7 @@ export function QrAnalysis() {
         if (code) {
           const formData = new FormData();
           formData.append('qrCodeContent', code.data);
-          qrFormActionWithToken(formData);
+          handleFormAction(formData);
         } else {
           toast({
             variant: 'destructive',
@@ -129,7 +134,7 @@ export function QrAnalysis() {
       setScannerOpen(false);
       const formData = new FormData();
       formData.append('qrCodeContent', data.text);
-      qrFormActionWithToken(formData);
+      handleFormAction(formData);
     }
   };
 

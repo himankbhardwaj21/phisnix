@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useActionState, useEffect, useRef, useTransition } from 'react';
+import { useActionState, useEffect, useRef, useState, useTransition } from 'react';
 import { useFormStatus } from 'react-dom';
 import { Search, LoaderCircle } from 'lucide-react';
 
@@ -33,22 +33,20 @@ export function PaymentAnalysis() {
   const { toast } = useToast();
   const formRef = useRef<HTMLFormElement>(null);
   const { user } = useUser();
-  const [isPending, startTransition] = useTransition();
+  const [idToken, setIdToken] = useState<string | null>(null);
 
-  const [state, formAction] = useActionState<AnalysisState<AnalyzeWebsiteSafetyOutput>, FormData>(
+  const [state, formAction, isPending] = useActionState<AnalysisState<AnalyzeWebsiteSafetyOutput>, FormData>(
     performPaymentAnalysis,
     {}
   );
   
-  const formActionWithToken = (formData: FormData) => {
-    startTransition(async () => {
-        if (user) {
-            const token = await user.getIdToken();
-            formData.append('idToken', token);
-        }
-        formAction(formData);
-    });
-  };
+  useEffect(() => {
+    if (user) {
+      user.getIdToken().then(setIdToken);
+    } else {
+      setIdToken(null);
+    }
+  }, [user]);
 
   useEffect(() => {
     if (state.error) {
@@ -68,7 +66,8 @@ export function PaymentAnalysis() {
 
   return (
     <div className="space-y-6">
-      <form ref={formRef} action={formActionWithToken} className="flex w-full items-start gap-2">
+      <form ref={formRef} action={formAction} className="flex w-full items-start gap-2">
+        {idToken && <input type="hidden" name="idToken" value={idToken} />}
         <div className="flex-1 space-y-1">
           <Input
             name="paymentLink"
