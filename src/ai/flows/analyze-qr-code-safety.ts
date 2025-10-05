@@ -3,7 +3,7 @@
 /**
  * @fileOverview Analyzes QR codes for website safety.
  *
- * - analyzeQrCodeSafety - Analyzes a QR code to determine if the linked website is safe or fraudulent.
+ * - analyzeQrCodeSafety - Analyzes QR code content to determine if it is safe or fraudulent.
  * - AnalyzeQrCodeSafetyInput - The input type for the analyzeQrCodeSafety function.
  * - AnalyzeQrCodeSafetyOutput - The return type for the analyzeQrCodeSafety function.
  */
@@ -12,18 +12,20 @@ import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
 
 const AnalyzeQrCodeSafetyInputSchema = z.object({
-  qrCodeDataUri: z
+  qrCodeContent: z
     .string()
     .describe(
-      "A QR code image as a data URI that must include a MIME type and use Base64 encoding. Expected format: 'data:<mimetype>;base64,<encoded_data>'." // Corrected grammar here
+      "The decoded content from a QR code, which could be a URL or any other text."
     ),
 });
 export type AnalyzeQrCodeSafetyInput = z.infer<typeof AnalyzeQrCodeSafetyInputSchema>;
 
 const AnalyzeQrCodeSafetyOutputSchema = z.object({
-  safe: z.boolean().describe('Whether the linked website is safe or not.'),
-  reason: z.string().describe('The reason for the safety determination.'),
-  trustScore: z.number().min(0).max(100).describe('A score from 0 to 100 representing the trust level of the content.')
+  isSafe: z.boolean().describe('Whether the content is considered safe or not.'),
+  reasoning: z.string().describe('The reason for the safety determination.'),
+  trustScore: z.number().min(0).max(100).describe('A score from 0 to 100 representing the trust level of the content.'),
+  contentType: z.string().describe('The detected type of content (e.g., URL, Text, Contact Card).'),
+  extractedUrl: z.string().optional().describe('The URL extracted from the content, if any.'),
 });
 export type AnalyzeQrCodeSafetyOutput = z.infer<typeof AnalyzeQrCodeSafetyOutputSchema>;
 
@@ -37,13 +39,16 @@ const prompt = ai.definePrompt({
   name: 'analyzeQrCodeSafetyPrompt',
   input: {schema: AnalyzeQrCodeSafetyInputSchema},
   output: {schema: AnalyzeQrCodeSafetyOutputSchema},
-  prompt: `You are an expert in website security and fraud detection. Analyze the website linked in the QR code image to determine if it is safe or potentially fraudulent. Provide a trust score from 0 (very unsafe) to 100 (very safe).
+  prompt: `You are an expert in data security and fraud detection. Analyze the following content extracted from a QR code to determine if it is safe or potentially malicious. Provide a trust score from 0 (very unsafe) to 100 (very safe).
 
-Consider factors such as the website's domain age, SSL certificate, privacy policy, contact information, and user reviews. Also, check if the website is on any blocklists or has been reported for phishing or malware.
+Content: {{{qrCodeContent}}}
 
-Provide a verdict (safe or unsafe), a detailed explanation of your reasoning, and the trust score. Use the following QR code as input: {{media url=qrCodeDataUri}}
+1.  First, determine the type of content (e.g., URL, Plain Text, vCard, WiFi credentials).
+2.  If the content is a URL, analyze its safety. Consider factors such as the domain's reputation, SSL certificate, known phishing or malware reports, and suspicious parameters. Set 'extractedUrl' to this URL.
+3.  If the content is plain text or other data, analyze it for any suspicious characteristics. For example, does it contain unusual commands, scripts, or socially engineered messages?
+4.  Provide a clear verdict ('isSafe'), a detailed 'reasoning' for your conclusion, a 'trustScore', and the detected 'contentType'.
 
-Format your output as a JSON object with "safe" (boolean), "reason" (string), and "trustScore" (number) fields.`,
+Format your output as a JSON object.`,
 });
 
 const analyzeQrCodeSafetyFlow = ai.defineFlow(

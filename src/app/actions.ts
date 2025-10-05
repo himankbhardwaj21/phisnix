@@ -18,7 +18,8 @@ import { initializeAdminApp, getUserIdFromRequest, saveAnalysisResult } from '@/
 
 const urlSchema = z.string().url({ message: 'Please enter a valid URL.' });
 const paymentLinkSchema = z.string().url({ message: 'Please enter a valid payment link URL.' });
-const qrCodeSchema = z.string().startsWith('data:image/', { message: 'Invalid QR code image format.' });
+const qrContentSchema = z.string().min(1, { message: 'QR code content cannot be empty.'});
+
 
 export type AnalysisState<T> = {
   data?: T;
@@ -45,7 +46,7 @@ export async function performUrlAnalysis(
     const result = await analyzeWebsiteSafety({ url: validatedFields.data });
     const userId = await getUserIdFromRequest(idToken);
     if (userId) {
-      await saveAnalysisResult('urlAnalysis', { ...result, url: validatedFields.data }, userId);
+      await saveAnalysisResult('urlAnalysis', { ...result, url: validatedFields.data, isSafe: result.isSafe, trustScore: result.trustScore, analysisDate: new Date().toISOString() }, userId);
     }
     return { data: result };
   } catch (e: any) {
@@ -72,7 +73,7 @@ export async function performPaymentAnalysis(
     const result = await analyzePaymentLinkSafety({ paymentLink: validatedFields.data });
     const userId = await getUserIdFromRequest(idToken);
     if (userId) {
-      await saveAnalysisResult('paymentAnalysis', { ...result, paymentLink: validatedFields.data }, userId);
+      await saveAnalysisResult('paymentAnalysis', { ...result, paymentLink: validatedFields.data, isSafe: result.isSafe, trustScore: result.trustScore, analysisDate: new Date().toISOString() }, userId);
     }
     return { data: result };
   } catch (e: any) {
@@ -85,16 +86,16 @@ export async function performQrAnalysis(
   prevState: any,
   formData: FormData
 ): Promise<AnalysisState<AnalyzeQrCodeSafetyOutput>> {
-  const dataUri = formData.get('qrCodeDataUri');
+  const qrContent = formData.get('qrCodeContent');
   const idToken = formData.get('idToken') as string | null;
   
-  if (!dataUri) {
+  if (!qrContent) {
      return {
-      error: 'No QR code provided',
+      error: 'No QR code content provided',
     };
   }
 
-  const validatedFields = qrCodeSchema.safeParse(dataUri);
+  const validatedFields = qrContentSchema.safeParse(qrContent);
 
   if (!validatedFields.success) {
     return {
@@ -104,16 +105,13 @@ export async function performQrAnalysis(
   }
 
   try {
-    const result = await analyzeQrCodeSafety({ qrCodeDataUri: validatedFields.data });
+    const result = await analyzeQrCodeSafety({ qrCodeContent: validatedFields.data });
     const userId = await getUserIdFromRequest(idToken);
     if(userId) {
-        // We need to figure out what the QR code content is to save it.
-        // For now, let's assume the AI gives us the content or we decode it separately.
-        // Let's assume for now we save the data URI as content
-        await saveAnalysisResult('qrCodeAnalysis', { ...result, qrCodeContent: 'Scanned QR' }, userId);
+        await saveAnalysisResult('qrCodeAnalysis', { ...result, qrCodeContent: validatedFields.data, isSafe: result.isSafe, trustScore: result.trustScore, analysisDate: new Date().toISOString() }, userId);
     }
 
-    return { data: { ...result, isSafe: result.safe, reasoning: result.reason } };
+    return { data: result };
   } catch (e: any) {
     console.error(e);
     return { error: e.message || 'An unexpected error occurred during analysis. Please try again.' };
