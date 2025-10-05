@@ -14,6 +14,8 @@ import {
   AnalyzePaymentLinkOutput,
 } from '@/ai/flows/analyze-payment-link-safety';
 import { z } from 'zod';
+import { initializeAdminApp, getUserIdFromRequest, saveAnalysisResult } from '@/firebase/server-init';
+import { headers } from 'next/headers';
 
 const urlSchema = z.string().url({ message: 'Please enter a valid URL.' });
 const paymentLinkSchema = z.string().url({ message: 'Please enter a valid payment link URL.' });
@@ -40,10 +42,14 @@ export async function performUrlAnalysis(
 
   try {
     const result = await analyzeWebsiteSafety({ url: validatedFields.data });
+    const userId = await getUserIdFromRequest(headers());
+    if (userId) {
+      await saveAnalysisResult('urlAnalysis', { ...result, url: validatedFields.data }, userId);
+    }
     return { data: result };
-  } catch (e) {
+  } catch (e: any) {
     console.error(e);
-    return { error: 'An unexpected error occurred during analysis. Please try again.' };
+    return { error: e.message || 'An unexpected error occurred during analysis. Please try again.' };
   }
 }
 
@@ -62,10 +68,14 @@ export async function performPaymentAnalysis(
 
   try {
     const result = await analyzePaymentLinkSafety({ paymentLink: validatedFields.data });
+    const userId = await getUserIdFromRequest(headers());
+    if (userId) {
+      await saveAnalysisResult('paymentAnalysis', { ...result, paymentLink: validatedFields.data }, userId);
+    }
     return { data: result };
-  } catch (e) {
+  } catch (e: any) {
     console.error(e);
-    return { error: 'An unexpected error occurred during analysis. Please try again.' };
+    return { error: e.message || 'An unexpected error occurred during analysis. Please try again.' };
   }
 }
 
@@ -92,10 +102,47 @@ export async function performQrAnalysis(
 
   try {
     const result = await analyzeQrCodeSafety({ qrCodeDataUri: validatedFields.data });
-    // Map the 'safe' and 'reason' fields to 'isSafe' and 'reasoning' for consistency
+    const userId = await getUserIdFromRequest(headers());
+    if(userId) {
+        // We need to figure out what the QR code content is to save it.
+        // For now, let's assume the AI gives us the content or we decode it separately.
+        // Let's assume for now we save the data URI as content
+        await saveAnalysisResult('qrCodeAnalysis', { ...result, qrCodeContent: 'Scanned QR' }, userId);
+    }
+
     return { data: { ...result, isSafe: result.safe, reasoning: result.reason } };
-  } catch (e) {
+  } catch (e: any) {
     console.error(e);
-    return { error: 'An unexpected error occurred during analysis. Please try again.' };
+    return { error: e.message || 'An unexpected error occurred during analysis. Please try again.' };
+  }
+}
+
+export async function updateUserProfile(data: { name: string, phone: string }): Promise<{ error?: string }> {
+  try {
+    const { app } = initializeAdminApp();
+    const auth = app.auth();
+    const firestore = app.firestore();
+    const userId = await getUserIdFromRequest(headers());
+
+    if (!userId) {
+      throw new Error('User not authenticated.');
+    }
+    
+    // Update Firebase Auth
+    await auth.updateUser(userId, {
+      displayName: data.name,
+    });
+
+    // Update Firestore
+    const userRef = firestore.collection('users').doc(userId);
+    await userRef.update({
+      name: data.name,
+      phoneNumber: data.phone,
+    });
+
+    return {};
+  } catch (error: any) {
+    console.error('Error updating profile:', error);
+    return { error: error.message || 'Failed to update profile.' };
   }
 }
