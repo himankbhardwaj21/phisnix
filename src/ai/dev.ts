@@ -3,4 +3,3 @@ config();
 
 import '@/ai/flows/analyze-qr-code-safety.ts';
 import '@/ai/flows/analyze-website-safety.ts';
-import '@/ai/flows/analyze-payment-link-safety.ts';

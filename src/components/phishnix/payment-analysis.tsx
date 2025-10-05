@@ -7,8 +7,8 @@ import { Search, LoaderCircle } from 'lucide-react';
 
 import { performPaymentAnalysis, type AnalysisState } from '@/app/actions';
 import {
-  AnalyzePaymentLinkOutput,
-} from '@/ai/flows/analyze-payment-link-safety';
+  AnalyzeWebsiteSafetyOutput,
+} from '@/ai/flows/analyze-website-safety';
 import { Input } from '../ui/input';
 import { Button } from '../ui/button';
 import { AnalysisResult } from './analysis-result';
@@ -33,7 +33,7 @@ export function PaymentAnalysis() {
   const { toast } = useToast();
   const formRef = useRef<HTMLFormElement>(null);
   const { user } = useUser();
-  const [state, formAction] = useActionState<AnalysisState<AnalyzePaymentLinkOutput>, FormData>(
+  const [state, formAction] = useActionState<AnalysisState<AnalyzeWebsiteSafetyOutput>, FormData>(
     performPaymentAnalysis,
     {}
   );
@@ -79,7 +79,7 @@ export function PaymentAnalysis() {
         </div>
         <SubmitButton />
       </form>
-      <AnalysisResult<AnalyzePaymentLinkOutput> state={state} />
+      <AnalysisResult<AnalyzeWebsiteSafetyOutput> state={state} />
     </div>
   );
 }

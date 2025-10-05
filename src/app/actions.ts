@@ -9,10 +9,6 @@ import {
   analyzeWebsiteSafety,
   AnalyzeWebsiteSafetyOutput,
 } from '@/ai/flows/analyze-website-safety';
-import {
-  analyzePaymentLinkSafety,
-  AnalyzePaymentLinkOutput,
-} from '@/ai/flows/analyze-payment-link-safety';
 import { z } from 'zod';
 import { initializeAdminApp, getUserIdFromRequest, saveAnalysisResult } from '@/firebase/server-init';
 
@@ -58,7 +54,7 @@ export async function performUrlAnalysis(
 export async function performPaymentAnalysis(
   prevState: any,
   formData: FormData
-): Promise<AnalysisState<AnalyzePaymentLinkOutput>> {
+): Promise<AnalysisState<AnalyzeWebsiteSafetyOutput>> {
   const validatedFields = paymentLinkSchema.safeParse(formData.get('paymentLink'));
   const idToken = formData.get('idToken') as string | null;
 
@@ -70,9 +66,11 @@ export async function performPaymentAnalysis(
   }
 
   try {
-    const result = await analyzePaymentLinkSafety({ paymentLink: validatedFields.data });
+    // Re-use the more general website safety analysis for payment links
+    const result = await analyzeWebsiteSafety({ url: validatedFields.data });
     const userId = await getUserIdFromRequest(idToken);
     if (userId) {
+      // Save it under paymentAnalysis collection for semantic separation
       await saveAnalysisResult('paymentAnalysis', { ...result, paymentLink: validatedFields.data, isSafe: result.isSafe, trustScore: result.trustScore, analysisDate: new Date().toISOString() }, userId);
     }
     return { data: result };
