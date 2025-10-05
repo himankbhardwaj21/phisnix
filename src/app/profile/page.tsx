@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useTransition } from 'react';
-import { useUser } from '@/firebase';
+import { useFirebase, useUser } from '@/firebase';
 import { AppHeader } from '@/components/phishnix/header';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -15,7 +15,8 @@ import { useToast } from '@/hooks/use-toast';
 import { updateProfile, sendPasswordResetEmail } from 'firebase/auth';
 
 export default function ProfilePage() {
-  const { user, auth, isUserLoading } = useUser();
+  const { user, isUserLoading } = useUser();
+  const { auth } = useFirebase();
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
 
