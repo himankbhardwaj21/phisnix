@@ -31,32 +31,20 @@ function PasswordResetFlow() {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [manualCode, setManualCode] = useState('');
 
   const [step, setStep] = useState<'request' | 'confirm'>('request');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isVerifying, setIsVerifying] = useState(true);
 
-  // Effect to check for oobCode in URL on component mount
   useEffect(() => {
     const codeFromUrl = searchParams.get('oobCode');
     if (codeFromUrl) {
-      setIsLoading(true);
-      setError(null);
-      verifyPasswordResetCode(auth, codeFromUrl)
-        .then((verifiedEmail) => {
-          setEmail(verifiedEmail);
-          setOobCode(codeFromUrl);
-          setStep('confirm');
-          toast({ title: 'Code verified!', description: 'You can now set a new password.' });
-        })
-        .catch((err) => {
-          setError(handleAuthError(err).message);
-          toast({ variant: 'destructive', title: 'Invalid Link', description: 'The password reset link is invalid or has expired.' });
-        })
-        .finally(() => setIsLoading(false));
+      handleCodeVerification(codeFromUrl);
+    } else {
+        setIsVerifying(false);
     }
-    setIsVerifying(false);
   }, [searchParams, auth, toast]);
 
   const handleAuthError = (err: AuthError): { title: string; message: string } => {
@@ -70,9 +58,9 @@ function PasswordResetFlow() {
       case 'auth/weak-password':
         return { title: 'Weak Password', message: 'Password should be at least 6 characters long.' };
       case 'auth/expired-action-code':
-        return { title: 'Expired Code', message: 'The password reset code has expired. Please request a new one.' };
+        return { title: 'Expired Code', message: 'The reset code has expired. Please request a new one.' };
       case 'auth/invalid-action-code':
-        return { title: 'Invalid Code', message: 'The password reset code is invalid. Please check the link or request a new one.' };
+        return { title: 'Invalid Code', message: 'The reset code is invalid. Please check the code or request a new one.' };
       default:
         console.error('Password Reset Error:', err);
         return { title: 'Error', message: 'An unexpected error occurred. Please try again.' };
@@ -89,17 +77,16 @@ function PasswordResetFlow() {
     setError(null);
 
     try {
-      // The actionCodeSettings will redirect the user back to this page with the oobCode
       const actionCodeSettings = {
-        url: `${window.location.origin}/reset-password`,
-        handleCodeInApp: true,
+        url: `${window.location.origin}/login`, // We don't need user to come back to reset page
+        handleCodeInApp: false, // Let user copy the code
       };
       await sendPasswordResetEmail(auth, email, actionCodeSettings);
       toast({
         title: 'Password Reset Email Sent',
-        description: 'Please check your email for a link to reset your password.',
+        description: 'Check your email for a link containing the reset code (oobCode).',
       });
-      // We don't change step here. The user must click the link in their email.
+      setStep('confirm'); // Move to confirmation step to enter OTP
     } catch (err) {
       const { title, message } = handleAuthError(err as AuthError);
       setError(message);
@@ -109,21 +96,42 @@ function PasswordResetFlow() {
     }
   };
 
+  const handleCodeVerification = async (code: string) => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const verifiedEmail = await verifyPasswordResetCode(auth, code);
+        setEmail(verifiedEmail);
+        setOobCode(code);
+        setStep('confirm');
+        toast({ title: 'Code verified!', description: 'You can now set a new password.' });
+      } catch (err) {
+          const { title, message } = handleAuthError(err as AuthError);
+          setError(message);
+          toast({ variant: 'destructive', title, description: message });
+      } finally {
+        setIsLoading(false);
+      }
+  }
+
   const handleConfirmSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (newPassword !== confirmPassword) {
       setError('Passwords do not match.');
       return;
     }
-    if (!oobCode) {
-      setError('No valid reset code found. Please restart the process.');
+    
+    const codeToUse = oobCode || manualCode;
+    if (!codeToUse) {
+      setError('A reset code is required. Please enter it above.');
       return;
     }
+
     setIsLoading(true);
     setError(null);
 
     try {
-      await confirmPasswordReset(auth, oobCode, newPassword);
+      await confirmPasswordReset(auth, codeToUse, newPassword);
       toast({
         title: 'Password Reset Successful!',
         description: 'You can now sign in with your new password.',
@@ -142,7 +150,7 @@ function PasswordResetFlow() {
     return (
       <div className="w-full min-h-screen flex flex-col items-center justify-center p-4">
         <LoaderCircle className="h-10 w-10 animate-spin text-primary" />
-        <p className="mt-4 text-muted-foreground">Verifying reset link...</p>
+        <p className="mt-4 text-muted-foreground">Checking for reset code...</p>
       </div>
     );
   }
@@ -161,7 +169,7 @@ function PasswordResetFlow() {
             <CardHeader>
               <CardTitle>Reset Your Password</CardTitle>
               <CardDescription>
-                Enter your email address and we'll send you a link to reset your password.
+                Enter your email address to receive a password reset code.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -190,7 +198,7 @@ function PasswordResetFlow() {
                   </div>
                 </div>
                 <Button type="submit" className="w-full" disabled={isLoading}>
-                  {isLoading ? <LoaderCircle className="animate-spin" /> : 'Send Reset Link'}
+                  {isLoading ? <LoaderCircle className="animate-spin" /> : 'Send Reset Code'}
                 </Button>
               </form>
               <div className="mt-4 text-center text-sm">
@@ -208,7 +216,7 @@ function PasswordResetFlow() {
             <CardHeader>
               <CardTitle>Create a New Password</CardTitle>
               <CardDescription>
-                Your new password must be at least 6 characters long.
+                Enter the reset code from your email and set a new password.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -220,13 +228,24 @@ function PasswordResetFlow() {
                     <AlertDescription>{error}</AlertDescription>
                   </Alert>
                 )}
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
-                  <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                    <Input id="email" type="email" value={email} disabled className="pl-10" />
-                  </div>
-                </div>
+                 {!oobCode && (
+                   <div className="space-y-2">
+                    <Label htmlFor="reset-code">Reset Code (OTP)</Label>
+                    <div className="relative">
+                        <Input
+                        id="reset-code"
+                        type="text"
+                        placeholder="Enter code from email"
+                        value={manualCode}
+                        onChange={(e) => setManualCode(e.target.value)}
+                        required
+                        disabled={isLoading}
+                        />
+                    </div>
+                    <p className="text-xs text-muted-foreground">Find the link in your email and copy the value of the `oobCode` parameter.</p>
+                 </div>
+                 )}
+
                 <div className="space-y-2">
                   <Label htmlFor="new-password">New Password</Label>
                   <div className="relative">
@@ -267,6 +286,9 @@ function PasswordResetFlow() {
                 <Button type="submit" className="w-full" disabled={isLoading}>
                   {isLoading ? <LoaderCircle className="animate-spin" /> : 'Set New Password'}
                 </Button>
+                 <Button variant="link" size="sm" className="w-full" onClick={() => { setStep('request'); setError(null); }}>
+                    Didn't get a code? Send again.
+                </Button>
               </form>
             </CardContent>
           </>
@@ -275,7 +297,6 @@ function PasswordResetFlow() {
     </div>
   );
 }
-
 
 export default function ResetPasswordPage() {
     return (
