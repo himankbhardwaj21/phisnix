@@ -137,7 +137,9 @@ export default function LoginPage() {
       <div className="flex flex-col items-center justify-center py-12">
         <div className="mx-auto grid w-[350px] gap-6">
           <div className="grid gap-2 text-center">
-            <Logo />
+            <Link href="/" aria-label="PhishNix Home">
+              <Logo />
+            </Link>
             <h1 className="text-3xl font-bold font-headline">{isSignUp ? 'Create an account' : 'Welcome back'}</h1>
             <p className="text-balance text-muted-foreground">
               {isSignUp ? 'Enter your information to create an account' : 'Enter your credentials to access your account'}
