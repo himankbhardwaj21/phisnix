@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useActionState, useEffect, useRef } from 'react';
+import { useActionState, useEffect, useRef, useTransition } from 'react';
 import { useFormStatus } from 'react-dom';
 import { Search, LoaderCircle } from 'lucide-react';
 
@@ -33,17 +33,20 @@ export function UrlAnalysis() {
   const { toast } = useToast();
   const formRef = useRef<HTMLFormElement>(null);
   const { user } = useUser();
+  const [isPending, startTransition] = useTransition();
   const [state, formAction] = useActionState<AnalysisState<AnalyzeWebsiteSafetyOutput>, FormData>(
     performUrlAnalysis,
     {}
   );
 
-  const formActionWithToken = async (formData: FormData) => {
-    if (user) {
-      const token = await user.getIdToken();
-      formData.append('idToken', token);
-    }
-    formAction(formData);
+  const formActionWithToken = (formData: FormData) => {
+    startTransition(async () => {
+      if (user) {
+        const token = await user.getIdToken();
+        formData.append('idToken', token);
+      }
+      formAction(formData);
+    });
   };
 
   useEffect(() => {
@@ -79,7 +82,7 @@ export function UrlAnalysis() {
         </div>
         <SubmitButton />
       </form>
-      <AnalysisResult<AnalyzeWebsiteSafetyOutput> state={state} />
+      <AnalysisResult<AnalyzeWebsiteSafetyOutput> state={state} pending={isPending} />
     </div>
   );
 }
