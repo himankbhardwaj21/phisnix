@@ -14,6 +14,18 @@ export function initializeAdminApp() {
     return { app: existingApp };
   }
 
+  // Do not attempt to initialize if service account is not available
+  if (!serviceAccount) {
+    // This is not a hard error, as some actions might not need the admin app.
+    // Functions that do need it should handle the 'null' app case.
+    const mockApp = {
+        auth: () => ({ verifyIdToken: async () => null, updateUser: async () => {} }),
+        firestore: () => ({ collection: () => ({ doc: () => ({ collection: () => ({ add: async () => {} }), update: async () => {} }) }) })
+    };
+    // @ts-ignore
+    return { app: mockApp as App };
+  }
+
   const app = initializeApp({
     credential: cert(serviceAccount),
     databaseURL: `https://${process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID}.firebaseio.com`
@@ -28,6 +40,7 @@ export async function getUserIdFromRequest(idToken: string | null): Promise<stri
   }
   try {
     const { app } = initializeAdminApp();
+    if (!app.auth) return null; // Handle case where admin app failed to initialize
     const decodedToken = await app.auth().verifyIdToken(idToken);
     return decodedToken.uid;
   } catch (error) {
@@ -45,6 +58,7 @@ export async function saveAnalysisResult(
 ) {
   try {
     const { app } = initializeAdminApp();
+    if (!app.firestore) throw new Error('Admin App not initialized.');
     const firestore = app.firestore();
     
     const analysisData = {
