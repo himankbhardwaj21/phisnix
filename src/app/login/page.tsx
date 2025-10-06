@@ -118,9 +118,7 @@ export default function LoginPage() {
   return (
     <div className="w-full min-h-screen flex flex-col items-center justify-center p-4 bg-background">
        <div className="absolute top-4 left-4">
-        <Link href="/" aria-label="PhishNix Home">
           <Logo />
-        </Link>
       </div>
       <div className="flex flex-col items-center justify-center py-12">
         <div className="mx-auto grid w-[350px] gap-6">
