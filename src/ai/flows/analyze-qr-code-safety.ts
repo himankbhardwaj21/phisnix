@@ -22,7 +22,7 @@ export type AnalyzeQrCodeSafetyInput = z.infer<typeof AnalyzeQrCodeSafetyInputSc
 
 const AnalyzeQrCodeSafetyOutputSchema = z.object({
   isSafe: z.boolean().describe('Whether the content is considered safe or not.'),
-  reasoning: z.string().describe('The reason for the safety determination.'),
+  reasoning: z.string().describe('A detailed explanation for the safety determination, outlining the factors considered.'),
   trustScore: z.number().min(0).max(1).describe('A score of 0 if unsafe/suspicious, or 1 if safe.'),
   contentType: z.string().describe('The detected type of content (e.g., URL, Text, UPI Payment).'),
   extractedUrl: z.string().optional().describe('The URL extracted from the content, if any.'),
@@ -46,29 +46,35 @@ const prompt = ai.definePrompt({
 
 Content: {{{qrCodeContent}}}
 
-Follow these steps:
+Follow these steps meticulously and provide detailed reasoning for your verdict:
 
-1.  **Determine Content Type:** First, identify the type of content. Is it a standard URL (http/https), a UPI payment link (upi://), plain text, or something else?
+1.  **Determine Content Type:** First, identify the type of content. Is it a standard URL (http/https), a UPI payment link (upi://), plain text, or something else? Set the 'contentType' field accordingly.
 
 2.  **Handle UPI Links:**
     *   If the content starts with 'upi://pay', recognize it as a **UPI Payment**.
-    *   These links are generally safe to open in a payment app, as the user must still authenticate the transaction. Therefore, you should set **isSafe** to **true** and **trustScore** to **1**.
+    *   These links are generally safe to open in a payment app because the user must still authenticate the transaction with a PIN. Therefore, you should set **isSafe** to **true** and **trustScore** to **1**.
     *   Parse the UPI link to extract key information. The link is a standard URL. The pathname is the VPA. Search for these query parameters:
         *   'pa': The Virtual Payment Address (VPA). Set the 'vpa' output field.
         *   'pn': The Payee Name. Set the 'payeeName' output field.
         *   'am': The transaction amount. Set the 'amount' output field.
-    *   For the 'reasoning', explain that it's a valid UPI link and list the extracted payee details for user verification. The main risk is paying the wrong person, so confirming the details is important.
+    *   For the 'reasoning', provide a detailed explanation. State that it's a valid UPI link, which is a secure payment protocol. Explain that the primary risk is not the link itself, but paying the wrong person or an incorrect amount. Emphasize that the user MUST verify the extracted payee name, VPA, and amount in their UPI app before entering their PIN.
 
 3.  **Handle Standard URLs (http/https):**
-    *   If the content is a standard web URL, analyze its safety. Consider domain reputation, SSL, known phishing reports, and suspicious parameters.
-    *   Set 'isSafe', 'trustScore', and 'reasoning' based on this web analysis.
+    *   If the content is a standard web URL, perform a thorough safety analysis. Your reasoning must be detailed.
+    *   Consider and mention the following factors in your reasoning:
+        *   **Domain Reputation:** Does the domain seem legitimate (e.g., 'google.com') or suspicious (e.g., 'g00gle-login.com')?
+        *   **SSL/TLS:** Does the URL use HTTPS? Mention that while HTTPS is good, it doesn't guarantee safety.
+        *   **Subdomains & Path:** Look for suspicious keywords like 'login', 'secure', 'account', 'update' in unusual places.
+        *   **Urgency/Scare Tactics:** Does the URL path suggest urgency (e.g., 'your-account-is-suspended')?
+    *   Set 'isSafe' and 'trustScore' based on this analysis. For example, a shortened URL from a trusted source might be safe, but a non-HTTPS URL with a suspicious domain should be unsafe.
     *   Set 'extractedUrl' to this URL.
 
 4.  **Handle Other Content:**
-    *   If the content is plain text or other data, analyze it for suspicious characteristics (e.g., scripts, strange commands, socially engineered messages).
-    *   Set 'isSafe', 'trustScore', and 'reasoning' accordingly.
+    *   If the content is plain text, a phone number, or other data, analyze it for suspicious characteristics.
+    *   For the 'reasoning', explain what the content is (e.g., "This is plain text containing a contact number."). Generally, plain text is safe, so set 'isSafe' to true and 'trustScore' to 1 unless it contains something that looks like a script or a socially engineered message (e.g., "You've won a prize! Call this number now!").
+    *   If it's just text or a number, explain that the content itself is not inherently dangerous, but the user should be cautious about how they use it.
 
-Format your output as a JSON object.`,
+Format your output as a JSON object. Your reasoning must be comprehensive and justify your verdict clearly.`,
 });
 
 const analyzeQrCodeSafetyFlow = ai.defineFlow(
