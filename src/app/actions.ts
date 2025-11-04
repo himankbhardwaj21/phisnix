@@ -22,11 +22,27 @@ export type AnalysisState<T> = {
   fieldErrors?: { [key: string]: string[] | undefined };
 };
 
+const ensureProtocol = (url: string) => {
+    if (!/^(https?:\/\/)/i.test(url)) {
+        return `https://${url}`;
+    }
+    return url;
+};
+
 export async function performUrlAnalysis(
   prevState: any,
   formData: FormData
 ): Promise<AnalysisState<AnalyzeWebsiteSafetyOutput>> {
-  const validatedFields = urlSchema.safeParse(formData.get('url'));
+  const rawUrl = formData.get('url') as string;
+  if (!rawUrl) {
+    return {
+        error: 'Invalid URL provided.',
+        fieldErrors: { url: ['Please enter a URL.'] },
+    };
+  }
+  const urlWithProtocol = ensureProtocol(rawUrl);
+
+  const validatedFields = urlSchema.safeParse(urlWithProtocol);
 
   if (!validatedFields.success) {
     return {
@@ -48,7 +64,18 @@ export async function performPaymentAnalysis(
   prevState: any,
   formData: FormData
 ): Promise<AnalysisState<AnalyzeWebsiteSafetyOutput>> {
-  const validatedFields = paymentLinkSchema.safeParse(formData.get('paymentLink'));
+  const rawPaymentLink = formData.get('paymentLink') as string;
+
+  if (!rawPaymentLink) {
+    return {
+        error: 'Invalid Payment Link provided.',
+        fieldErrors: { paymentLink: ['Please enter a payment link.'] },
+    };
+  }
+
+  const paymentLinkWithProtocol = ensureProtocol(rawPaymentLink);
+  const validatedFields = paymentLinkSchema.safeParse(paymentLinkWithProtocol);
+
 
   if (!validatedFields.success) {
     return {

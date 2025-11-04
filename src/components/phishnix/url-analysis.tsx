@@ -78,10 +78,10 @@ export function UrlAnalysis() {
         <div className="flex-1 space-y-1">
           <Input
             name="url"
-            placeholder="https://example.com"
+            placeholder="www.example.com"
             className="text-base"
             required
-            type="url"
+            type="text"
           />
           {state.fieldErrors?.url && (
             <p className="text-sm text-destructive">{state.fieldErrors.url[0]}</p>

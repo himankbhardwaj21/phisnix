@@ -81,10 +81,10 @@ export function PaymentAnalysis() {
         <div className="flex-1 space-y-1">
           <Input
             name="paymentLink"
-            placeholder="https://payment.provider.com/..."
+            placeholder="payment.provider.com/..."
             className="text-base"
             required
-            type="url"
+            type="text"
           />
           {state.fieldErrors?.paymentLink && (
             <p className="text-sm text-destructive">{state.fieldErrors.paymentLink[0]}</p>
