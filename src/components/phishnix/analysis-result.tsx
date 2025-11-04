@@ -2,7 +2,7 @@
 import { useFormStatus } from 'react-dom';
 import Link from 'next/link';
 import Image from 'next/image';
-import { AlertCircle, CheckCircle2, Info, LoaderCircle, XCircle } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Info, LoaderCircle, XCircle, User, AtSign, IndianRupee } from 'lucide-react';
 import {
   Accordion,
   AccordionContent,
@@ -17,7 +17,7 @@ import { Button } from '../ui/button';
 import { AmazonPayIcon, GooglePayIcon, PaytmIcon, PhonePeIcon } from '../icons';
 
 type AnalysisResultProps<T> = {
-  state: AnalysisState<T & { isSafe?: boolean; reasoning?: string, trustScore?: number }>;
+  state: AnalysisState<T & { isSafe?: boolean; reasoning?: string, trustScore?: number, payeeName?: string, vpa?: string, amount?: string }>;
   pending?: boolean;
   type: 'url' | 'payment' | 'qr';
 };
@@ -36,7 +36,7 @@ const ResultSkeleton = () => (
     </div>
 );
 
-export function AnalysisResult<T extends { isSafe?: boolean; reasoning?: string, trustScore?: number }>({ state, pending: externalPending, type }: AnalysisResultProps<T>) {
+export function AnalysisResult<T extends { isSafe?: boolean; reasoning?: string, trustScore?: number, payeeName?: string, vpa?: string, amount?: string }>({ state, pending: externalPending, type }: AnalysisResultProps<T>) {
   const { pending: formPending } = useFormStatus();
   const pending = formPending || externalPending;
 
@@ -56,8 +56,9 @@ export function AnalysisResult<T extends { isSafe?: boolean; reasoning?: string,
     );
   }
 
-  const { isSafe, reasoning, trustScore } = state.data;
-  const showPaymentApps = type === 'qr' && isSafe;
+  const { isSafe, reasoning, trustScore, payeeName, vpa, amount } = state.data;
+  const isUpiPayment = type === 'qr' && state.data.contentType === 'UPI Payment';
+  const showPaymentApps = isUpiPayment && isSafe;
 
 
   return (
@@ -80,6 +81,34 @@ export function AnalysisResult<T extends { isSafe?: boolean; reasoning?: string,
         )}
       </CardHeader>
       <CardContent>
+         {isUpiPayment && (
+            <div className="mb-4 space-y-3 rounded-lg border bg-background p-4">
+                <h3 className="font-semibold text-center text-lg">Payment Details</h3>
+                <div className="flex items-center gap-3">
+                    <User className="h-5 w-5 text-muted-foreground" />
+                    <div className="text-sm">
+                        <div className="text-muted-foreground">Payee Name</div>
+                        <div className="font-medium">{payeeName || 'Not Provided'}</div>
+                    </div>
+                </div>
+                 <div className="flex items-center gap-3">
+                    <AtSign className="h-5 w-5 text-muted-foreground" />
+                    <div className="text-sm">
+                        <div className="text-muted-foreground">VPA / UPI ID</div>
+                        <div className="font-mono text-xs md:text-sm">{vpa || 'Not Provided'}</div>
+                    </div>
+                </div>
+                {amount && (
+                    <div className="flex items-center gap-3">
+                        <IndianRupee className="h-5 w-5 text-muted-foreground" />
+                        <div className="text-sm">
+                            <div className="text-muted-foreground">Amount</div>
+                            <div className="font-semibold">{amount}</div>
+                        </div>
+                    </div>
+                )}
+            </div>
+        )}
         <Accordion type="single" collapsible className="w-full" defaultValue="item-1">
           <AccordionItem value="item-1" className={showPaymentApps ? 'border-b' : 'border-b-0'}>
             <AccordionTrigger>
