@@ -8,7 +8,6 @@ import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   AuthError,
-  signInWithPopup,
   signInWithRedirect,
   getRedirectResult,
   GoogleAuthProvider,
@@ -37,45 +36,39 @@ export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
+  const [formIsLoading, setFormIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // This effect handles both redirect results and ensures the user is navigated away if already logged in.
   useEffect(() => {
-    // If we have a user, it means login was successful (either via redirect or already logged in)
+    if (isUserLoading) {
+      // Still checking for a user, do nothing yet. The loading screen will show.
+      return;
+    }
+
     if (user) {
+      // If we have a user object, login is successful. Navigate away.
       router.push('/');
       return;
     }
 
-    // If the user state is still loading, wait.
-    if (isUserLoading) {
-      return;
-    }
-
-    // Only handle redirect result if we are not loading and have no user.
-    const handleRedirectResult = async () => {
-      try {
-        const result = await getRedirectResult(auth);
+    // If we've finished loading, and there's no user, check for a redirect result.
+    // This runs only once after the initial user check.
+    getRedirectResult(auth)
+      .then((result) => {
         if (result) {
-          // This block may not even be hit if the useUser hook above catches the user first,
-          // but it's a good fallback.
+          // A user has just signed in via redirect. The `onAuthStateChanged` listener
+          // (which powers the `useUser` hook) will pick up the new user, and this
+          // effect will re-run, hitting the `if (user)` block above to redirect.
           toast({
             title: 'Signed In',
-            description: 'Welcome back!',
+            description: `Welcome back, ${result.user.displayName || result.user.email}!`,
           });
-          router.push('/');
-        } else {
-          // No redirect result, this is a normal page load (not returning from OAuth).
-          // Safe to show the form now.
-          setIsLoading(false);
         }
-      } catch (err) {
+      })
+      .catch((err) => {
         setError(handleAuthError(err as AuthError));
-        setIsLoading(false);
-      }
-    };
-
-    handleRedirectResult();
+      });
   }, [user, isUserLoading, auth, router, toast]);
 
   const handleAuthError = (err: AuthError) => {
@@ -105,7 +98,7 @@ export default function LoginPage() {
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setIsLoading(true);
+    setFormIsLoading(true);
     setError(null);
 
     try {
@@ -121,7 +114,8 @@ export default function LoginPage() {
       // The useEffect hook will handle the redirect to '/' when the user state changes.
     } catch (err) {
       setError(handleAuthError(err as AuthError));
-      setIsLoading(false);
+    } finally {
+      setFormIsLoading(false);
     }
   };
 
@@ -130,7 +124,7 @@ export default function LoginPage() {
   };
 
   const handleOAuthSignIn = async (providerName: 'google' | 'outlook') => {
-    setIsLoading(true);
+    setFormIsLoading(true); // Visually disable form while redirect is being initiated
     setError(null);
     try {
       let provider;
@@ -139,23 +133,23 @@ export default function LoginPage() {
         provider.setCustomParameters({
           prompt: 'select_account',
         });
-        await signInWithRedirect(auth, provider);
       } else {
         provider = new OAuthProvider('microsoft.com');
         provider.setCustomParameters({
           prompt: 'select_account',
           tenant: 'common',
         });
-        // You could use redirect for Microsoft as well for consistency
-        await signInWithRedirect(auth, provider);
       }
+      await signInWithRedirect(auth, provider);
+      // Page will redirect, no need to set loading to false here.
     } catch (err) {
       setError(handleAuthError(err as AuthError));
-      setIsLoading(false);
+      setFormIsLoading(false);
     }
   };
   
-  if (isLoading || isUserLoading) {
+  // This is the primary loading screen, shown while Firebase determines the initial auth state.
+  if (isUserLoading) {
       return (
         <div className="w-full min-h-screen flex flex-col items-center justify-center p-4">
             <LoaderCircle className="h-10 w-10 animate-spin text-primary" />
@@ -187,11 +181,11 @@ export default function LoginPage() {
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-2 gap-4 mb-6">
-                <Button variant="outline" onClick={() => handleOAuthSignIn('google')} disabled={isLoading}>
+                <Button variant="outline" onClick={() => handleOAuthSignIn('google')} disabled={formIsLoading}>
                    <GoogleIcon className="mr-2 h-4 w-4" />
                   Google
                 </Button>
-                <Button variant="outline" onClick={() => handleOAuthSignIn('outlook')} disabled={isLoading}>
+                <Button variant="outline" onClick={() => handleOAuthSignIn('outlook')} disabled={formIsLoading}>
                    <OutlookIcon className="mr-2 h-4 w-4" />
                   Outlook
                 </Button>
@@ -219,7 +213,7 @@ export default function LoginPage() {
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    disabled={isLoading}
+                    disabled={formIsLoading}
                   />
                 </div>
                 <div className="grid gap-2">
@@ -239,21 +233,21 @@ export default function LoginPage() {
                       required
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      disabled={isLoading}
+                      disabled={formIsLoading}
                       className="pr-10"
                     />
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
                       className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground"
-                      disabled={isLoading}
+                      disabled={formIsLoading}
                     >
                       {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                     </button>
                   </div>
                 </div>
-                <Button type="submit" className="w-full" disabled={isLoading}>
-                  {isLoading ? (
+                <Button type="submit" className="w-full" disabled={formIsLoading}>
+                  {formIsLoading ? (
                     <LoaderCircle className="animate-spin" />
                   ) : isSignUp ? (
                     'Sign Up'
@@ -270,7 +264,7 @@ export default function LoginPage() {
                     setError(null);
                   }}
                   className="underline ml-1"
-                  disabled={isLoading}
+                  disabled={formIsLoading}
                 >
                   {isSignUp ? 'Sign in' : 'Sign up'}
                 </button>
