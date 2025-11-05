@@ -35,15 +35,11 @@ export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true); // Start as true to handle redirect check
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const handleRedirectResult = async () => {
-      // Avoid running this on initial load before a redirect has happened.
-      if (isLoading) return;
-
-      setIsLoading(true);
       try {
         const result = await getRedirectResult(auth);
         if (result) {
@@ -53,6 +49,7 @@ export default function LoginPage() {
             description: 'Welcome back!',
           });
           router.push('/');
+          // No need to set loading to false, as we are navigating away
         } else {
             // No redirect result, this is a normal page load.
              setIsLoading(false);
@@ -66,7 +63,7 @@ export default function LoginPage() {
     handleRedirectResult();
     // We only want this to run once on mount to check for a redirect result.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [auth, router, toast]);
+  }, [auth]);
 
 
   const handleAuthError = (err: AuthError) => {
