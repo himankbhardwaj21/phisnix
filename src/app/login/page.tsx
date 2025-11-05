@@ -149,7 +149,7 @@ export default function LoginPage() {
   };
   
   // This is the primary loading screen, shown while Firebase determines the initial auth state.
-  if (isUserLoading) {
+  if (isUserLoading || user) {
       return (
         <div className="w-full min-h-screen flex flex-col items-center justify-center p-4">
             <LoaderCircle className="h-10 w-10 animate-spin text-primary" />
@@ -232,7 +232,7 @@ export default function LoginPage() {
                       placeholder="Enter your Password"
                       required
                       value={password}
-                      onChange={(e) => setPassword(e.targt.value)}
+                      onChange={(e) => setPassword(e.target.value)}
                       disabled={formIsLoading}
                       className="pr-10"
                     />
