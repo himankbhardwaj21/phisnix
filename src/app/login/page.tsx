@@ -2,12 +2,14 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   AuthError,
   signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   GoogleAuthProvider,
   OAuthProvider,
 } from 'firebase/auth';
@@ -35,6 +37,37 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const handleRedirectResult = async () => {
+      // Avoid running this on initial load before a redirect has happened.
+      if (isLoading) return;
+
+      setIsLoading(true);
+      try {
+        const result = await getRedirectResult(auth);
+        if (result) {
+          // User has successfully signed in via redirect.
+          toast({
+            title: 'Signed In',
+            description: 'Welcome back!',
+          });
+          router.push('/');
+        } else {
+            // No redirect result, this is a normal page load.
+             setIsLoading(false);
+        }
+      } catch (err) {
+        setError(handleAuthError(err as AuthError));
+        setIsLoading(false);
+      }
+    };
+    
+    handleRedirectResult();
+    // We only want this to run once on mount to check for a redirect result.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [auth, router, toast]);
+
 
   const handleAuthError = (err: AuthError) => {
     switch (err.code) {
@@ -98,20 +131,23 @@ export default function LoginPage() {
         provider.setCustomParameters({
           prompt: 'select_account'
         });
+        // Using redirect instead of popup
+        await signInWithRedirect(auth, provider);
       } else {
+        // Outlook/Microsoft can still use popup for now, or could also be changed to redirect
         provider = new OAuthProvider('microsoft.com');
         provider.setCustomParameters({
           prompt: 'select_account',
           tenant: 'common'
         });
+        await signInWithPopup(auth, provider);
+        router.push('/');
       }
-      await signInWithPopup(auth, provider);
-      router.push('/');
     } catch (err) {
       setError(handleAuthError(err as AuthError));
-    } finally {
       setIsLoading(false);
     }
+    // For redirect, the page will reload, so no need for finally block here.
   };
 
 
