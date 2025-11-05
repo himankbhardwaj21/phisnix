@@ -232,7 +232,7 @@ export default function LoginPage() {
                       placeholder="Enter your Password"
                       required
                       value={password}
-                      onChange={(e) => setPassword(e.target.value)}
+                      onChange={(e) => setPassword(e.targt.value)}
                       disabled={formIsLoading}
                       className="pr-10"
                     />
@@ -285,3 +285,5 @@ export default function LoginPage() {
     </div>
   );
 }
+
+    
