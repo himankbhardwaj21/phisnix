@@ -13,15 +13,27 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Button } from '../ui/button';
 import { Logo } from './logo';
-import { useUser } from '@/firebase';
+import { useFirebase, useUser } from '@/firebase';
 import { User as UserIcon } from 'lucide-react';
+import { signOut } from 'firebase/auth';
 
 export function AppHeader() {
   const router = useRouter();
   const { user, isUserLoading } = useUser();
+  const { auth } = useFirebase();
 
   const handleContactClick = () => {
     router.push('/contact');
+  };
+
+  const handleSignOut = async () => {
+    try {
+      await signOut(auth);
+      router.push('/login');
+    } catch (error) {
+      console.error('Error signing out:', error);
+      // Optionally, show a toast notification for the error
+    }
   };
 
   return (
@@ -50,7 +62,7 @@ export function AppHeader() {
             <DropdownMenuItem onClick={handleContactClick}>Contact Us</DropdownMenuItem>
             <DropdownMenuItem disabled>Settings</DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => router.push('/login')}>Sign Out</DropdownMenuItem>
+            <DropdownMenuItem onClick={handleSignOut}>Sign Out</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
