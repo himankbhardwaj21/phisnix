@@ -1,3 +1,4 @@
+
 'use client';
 
 import Link from 'next/link';
@@ -13,7 +14,7 @@ import {
   GoogleAuthProvider,
   OAuthProvider,
 } from 'firebase/auth';
-import { useFirebase } from '@/firebase';
+import { useFirebase, useUser } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 
 import { Button } from '@/components/ui/button';
@@ -29,42 +30,53 @@ import { AlertCircle, LoaderCircle, Eye, EyeOff, Lock } from 'lucide-react';
 export default function LoginPage() {
   const router = useRouter();
   const { auth } = useFirebase();
+  const { user, isUserLoading } = useUser();
   const { toast } = useToast();
 
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(true); // Start as true to handle redirect check
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    // If we have a user, it means login was successful (either via redirect or already logged in)
+    if (user) {
+      router.push('/');
+      return;
+    }
+
+    // If the user state is still loading, wait.
+    if (isUserLoading) {
+      return;
+    }
+
+    // Only handle redirect result if we are not loading and have no user.
     const handleRedirectResult = async () => {
       try {
         const result = await getRedirectResult(auth);
         if (result) {
-          // User has successfully signed in via redirect.
+          // This block may not even be hit if the useUser hook above catches the user first,
+          // but it's a good fallback.
           toast({
             title: 'Signed In',
             description: 'Welcome back!',
           });
           router.push('/');
-          // No need to set loading to false, as we are navigating away
         } else {
-            // No redirect result, this is a normal page load.
-             setIsLoading(false);
+          // No redirect result, this is a normal page load (not returning from OAuth).
+          // Safe to show the form now.
+          setIsLoading(false);
         }
       } catch (err) {
         setError(handleAuthError(err as AuthError));
         setIsLoading(false);
       }
     };
-    
-    handleRedirectResult();
-    // We only want this to run once on mount to check for a redirect result.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [auth]);
 
+    handleRedirectResult();
+  }, [user, isUserLoading, auth, router, toast]);
 
   const handleAuthError = (err: AuthError) => {
     switch (err.code) {
@@ -106,10 +118,9 @@ export default function LoginPage() {
       } else {
         await signInWithEmailAndPassword(auth, email, password);
       }
-      router.push('/');
+      // The useEffect hook will handle the redirect to '/' when the user state changes.
     } catch (err) {
       setError(handleAuthError(err as AuthError));
-    } finally {
       setIsLoading(false);
     }
   };
@@ -126,32 +137,38 @@ export default function LoginPage() {
       if (providerName === 'google') {
         provider = new GoogleAuthProvider();
         provider.setCustomParameters({
-          prompt: 'select_account'
+          prompt: 'select_account',
         });
-        // Using redirect instead of popup
         await signInWithRedirect(auth, provider);
       } else {
-        // Outlook/Microsoft can still use popup for now, or could also be changed to redirect
         provider = new OAuthProvider('microsoft.com');
         provider.setCustomParameters({
           prompt: 'select_account',
-          tenant: 'common'
+          tenant: 'common',
         });
-        await signInWithPopup(auth, provider);
-        router.push('/');
+        // You could use redirect for Microsoft as well for consistency
+        await signInWithRedirect(auth, provider);
       }
     } catch (err) {
       setError(handleAuthError(err as AuthError));
       setIsLoading(false);
     }
-    // For redirect, the page will reload, so no need for finally block here.
   };
+  
+  if (isLoading || isUserLoading) {
+      return (
+        <div className="w-full min-h-screen flex flex-col items-center justify-center p-4">
+            <LoaderCircle className="h-10 w-10 animate-spin text-primary" />
+            <p className="mt-4 text-muted-foreground">Authenticating...</p>
+        </div>
+      )
+  }
 
 
   return (
     <div className="w-full min-h-screen flex flex-col items-center justify-center p-4 bg-background">
-       <div className="absolute top-4 left-4">
-          <Logo />
+      <div className="absolute top-4 left-4">
+        <Logo />
       </div>
       <div className="flex flex-col items-center justify-center py-12">
         <div className="mx-auto grid w-[350px] gap-6">
@@ -171,11 +188,11 @@ export default function LoginPage() {
             <CardContent>
               <div className="grid grid-cols-2 gap-4 mb-6">
                 <Button variant="outline" onClick={() => handleOAuthSignIn('google')} disabled={isLoading}>
-                  {isLoading ? <LoaderCircle className="animate-spin" /> : <GoogleIcon className="mr-2 h-4 w-4" />}
+                   <GoogleIcon className="mr-2 h-4 w-4" />
                   Google
                 </Button>
                 <Button variant="outline" onClick={() => handleOAuthSignIn('outlook')} disabled={isLoading}>
-                  {isLoading ? <LoaderCircle className="animate-spin" /> : <OutlookIcon className="mr-2 h-4 w-4" />}
+                   <OutlookIcon className="mr-2 h-4 w-4" />
                   Outlook
                 </Button>
               </div>
